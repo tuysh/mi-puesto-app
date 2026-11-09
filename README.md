@@ -1,17 +1,61 @@
-# mi_puesto
+# Mi puesto
 
-A new Flutter project.
+Punto de venta sencillo para un puesto: vender, cobrar y consultar.
+Aplicación Flutter para teléfono y tablet (8.7" en horizontal).
 
-## Getting Started
+```
+flutter run        # abrir la aplicación (PIN de ejemplo: 1234)
+flutter test       # correr las pruebas
+flutter analyze    # revisar el código
+```
 
-This project is a starting point for a Flutter application.
+## Estado actual
 
-A few resources to get you started if this is your first Flutter project:
+Solo existe el cliente. **Todavía no hay backend**: los datos son de ejemplo,
+viven en memoria y se pierden al cerrar la aplicación.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Cómo está organizado `lib/`
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+| Carpeta          | Qué contiene |
+|------------------|--------------|
+| `app/`           | El arranque: `MiPuestoApp` y `Dependencias` (los objetos compartidos). |
+| `nucleo/`        | Lo que usan todas las pantallas: colores, tipografía, formato de dinero y fechas, y los widgets básicos (botones, tarjetas, campos). |
+| `datos/`         | Los modelos (`Producto`, `Venta`…), los contratos con el backend (`repositorios/`) y sus versiones de mentira (`simulados/`). |
+| `controladores/` | El estado que comparten varias pantallas: sesión, catálogo, pedido y ventas. |
+| `pantallas/`     | Una carpeta por pantalla. Cada una tiene su archivo `pantalla_*.dart` y una carpeta `widgets/` con sus piezas. |
+
+Reglas que sigue el código:
+
+- **Un widget por archivo**, lo más pequeño posible, con un comentario que
+  dice qué es.
+- **Nombres en español** y completos; nada de abreviaturas.
+- **Claridad antes que rendimiento.**
+- Las pantallas nunca hablan con el backend directamente: usan un
+  repositorio o un controlador.
+- Sin paquetes externos: el estado se maneja con `ChangeNotifier` y
+  `ListenableBuilder`, que ya vienen con Flutter.
+
+## Cómo conectar el backend
+
+1. Abre `lib/datos/repositorios/repositorios.dart`. Ahí está la lista
+   completa de lo que la aplicación le pide al servidor.
+2. Por cada repositorio, crea una clase que lo implemente con llamadas
+   reales, por ejemplo
+   `class RepositorioDeVentasHttp implements RepositorioDeVentas`.
+3. En `lib/datos/conexiones.dart`, agrega un constructor que use esas
+   clases y pásalo en `main.dart`: `MiPuestoApp(conexiones: ...)`.
+
+Ninguna pantalla necesita cambiar.
+
+## Pendiente (no está en el diseño todavía)
+
+- Pantalla de **Historial** de ventas.
+- Administración de **Categorías**.
+- **Detalle de una categoría** en Reportes.
+
+Estos tres puntos están marcados en el código con la palabra `PENDIENTE`.
+
+## Tipografías
+
+Figtree y Bricolage Grotesque (licencia SIL Open Font; ver
+`assets/fuentes/`).
