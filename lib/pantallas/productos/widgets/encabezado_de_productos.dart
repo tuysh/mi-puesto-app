@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
-import 'package:mi_puesto/nucleo/avisos.dart';
+import 'package:mi_puesto/nucleo/navegacion.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
 import 'package:mi_puesto/nucleo/widgets/boton_de_contorno.dart';
 import 'package:mi_puesto/nucleo/widgets/boton_principal.dart';
+import 'package:mi_puesto/pantallas/productos/pantalla_de_categorias.dart';
 
 /// Encabezado de "Productos": el título, cuántos productos están a la
 /// venta y los botones "Categorías" y "Nuevo producto".
@@ -49,9 +50,9 @@ class EncabezadoDeProductos extends StatelessWidget {
               texto: 'Categorías',
               alto: 48,
               tamanoDeTexto: 16,
-              // PENDIENTE: el diseño todavía no incluye la pantalla para
-              // administrar categorías.
-              alTocar: () => mostrarAvisoDePendiente(context, 'Categorías'),
+              alTocar: () {
+                abrirPantalla(context, const PantallaDeCategorias());
+              },
             ),
             BotonPrincipal(
               texto: 'Nuevo producto',
