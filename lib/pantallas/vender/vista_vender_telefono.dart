@@ -48,16 +48,24 @@ class VistaVenderTelefono extends StatelessWidget {
           child: PistaDePedidoVacio(),
         ),
         Expanded(
-          child: CuadriculaDeProductos(
-            productos: productos,
-            rejilla: rejillaDeTelefono,
-            alTocarProducto: alTocarProducto,
-            relleno: const EdgeInsets.fromLTRB(18, 8, 18, 16),
+          // Stack encima: el aviso de venta FLOTA sobre los productos, que
+          // se siguen viendo alrededor y por debajo de él.
+          child: Stack(
+            children: [
+              CuadriculaDeProductos(
+                productos: productos,
+                rejilla: rejillaDeTelefono,
+                alTocarProducto: alTocarProducto,
+                relleno: const EdgeInsets.fromLTRB(18, 8, 18, 16),
+              ),
+              const Positioned(
+                left: 18,
+                right: 18,
+                bottom: 12,
+                child: AvisoDeUltimaVenta(),
+              ),
+            ],
           ),
-        ),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(14, 0, 14, 10),
-          child: AvisoDeUltimaVenta(),
         ),
         const Padding(
           padding: EdgeInsets.fromLTRB(14, 0, 14, 10),

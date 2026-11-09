@@ -3,6 +3,7 @@ import 'package:mi_puesto/datos/modelos/venta.dart';
 import 'package:mi_puesto/nucleo/formato/formato_dinero.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/nucleo/tema/medidas.dart';
+import 'package:mi_puesto/nucleo/tema/sombras.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
 import 'package:mi_puesto/nucleo/widgets/boton_de_contorno.dart';
 import 'package:mi_puesto/nucleo/widgets/cifra.dart';
@@ -30,6 +31,7 @@ class AvisoDeVentaRegistrada extends StatelessWidget {
       decoration: BoxDecoration(
         color: _verde.fondo,
         borderRadius: BorderRadius.circular(Radios.tarjetaGrande),
+        boxShadow: Sombras.flotante,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -70,8 +72,6 @@ class AvisoDeVentaRegistrada extends StatelessWidget {
       children: [
         Text(
           'Venta registrada · pagó $pago',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
           style: Tipografia.texto(15, peso: 800, color: _verde.tinta),
         ),
         // FittedBox encoge el renglón si el cambio es tan grande que no cabe.

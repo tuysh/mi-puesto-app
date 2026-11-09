@@ -11,7 +11,7 @@ import 'package:mi_puesto/nucleo/widgets/boton_principal.dart';
 import 'package:mi_puesto/nucleo/widgets/campo_de_texto.dart';
 import 'package:mi_puesto/nucleo/widgets/campo_etiquetado.dart';
 import 'package:mi_puesto/nucleo/widgets/columna_con_pie.dart';
-import 'package:mi_puesto/nucleo/widgets/dialogo_de_texto.dart';
+import 'package:mi_puesto/pantallas/productos/elegir_emoji.dart';
 import 'package:mi_puesto/pantallas/productos/widgets/boton_de_emoji.dart';
 import 'package:mi_puesto/pantallas/productos/widgets/selector_de_categoria.dart';
 
@@ -78,16 +78,20 @@ class _EstadoDeFormularioDeProducto extends State<FormularioDeProducto> {
   void _redibujar(String _) => setState(() {});
 
   Future<void> _cambiarEmoji() async {
-    final texto = await pedirTexto(
-      context,
-      titulo: 'Emoji del producto',
-      sugerencia: 'Escribe un emoji',
+    final catalogo = Dependencias.de(context).catalogo;
+    final categoria = catalogo.categorias.firstWhere(
+      (categoria) => categoria.id == _categoriaId,
     );
-    if (texto == null) return;
 
-    // `characters` separa el texto en símbolos completos; un emoji puede
-    // estar formado por varios caracteres internos.
-    setState(() => _emoji = texto.characters.first);
+    final emoji = await elegirEmoji(
+      context,
+      emojiActual: _emoji,
+      nombreDelProducto: _nombre.text.trim(),
+      fondo: categoria.colores.fondo,
+    );
+    if (emoji == null) return;
+
+    setState(() => _emoji = emoji);
   }
 
   Future<void> _guardar() async {

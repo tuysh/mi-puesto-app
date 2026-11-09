@@ -8,6 +8,7 @@ import 'package:mi_puesto/nucleo/tema/tipografia.dart';
 import 'package:mi_puesto/nucleo/widgets/caja_tocable.dart';
 import 'package:mi_puesto/nucleo/widgets/cifra.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/insignia_de_cantidad.dart';
+import 'package:mi_puesto/pantallas/vender/widgets/plato_de_emoji.dart';
 
 /// El botón de un producto ("tesela"): emoji, nombre corto y precio.
 ///
@@ -61,10 +62,7 @@ class TeselaDeProducto extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               spacing: 2,
               children: [
-                Text(
-                  producto.emoji,
-                  style: const TextStyle(fontSize: 32, height: 1.1),
-                ),
+                PlatoDeEmoji(emoji: producto.emoji),
                 Text(
                   producto.nombreCorto,
                   maxLines: 1,

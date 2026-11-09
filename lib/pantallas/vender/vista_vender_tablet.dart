@@ -67,16 +67,23 @@ class VistaVenderTablet extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Expanded(
-            child: CuadriculaDeProductos(
-              productos: productos,
-              rejilla: rejillaDeTablet,
-              alTocarProducto: alTocarProducto,
-              relleno: const EdgeInsets.fromLTRB(0, 8, 8, 16),
+            // Stack encima: el aviso de venta FLOTA sobre los productos.
+            child: Stack(
+              children: [
+                CuadriculaDeProductos(
+                  productos: productos,
+                  rejilla: rejillaDeTablet,
+                  alTocarProducto: alTocarProducto,
+                  relleno: const EdgeInsets.fromLTRB(0, 8, 8, 16),
+                ),
+                const Positioned(
+                  left: 0,
+                  right: 8,
+                  bottom: 16,
+                  child: AvisoDeUltimaVenta(),
+                ),
+              ],
             ),
-          ),
-          const Padding(
-            padding: EdgeInsets.only(bottom: 16),
-            child: AvisoDeUltimaVenta(),
           ),
         ],
       ),

@@ -30,10 +30,8 @@ class EncabezadoDeProductos extends StatelessWidget {
       spacing: 16,
       runSpacing: 12,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.end,
           spacing: 12,
           children: [
             Text('Productos', style: Tipografia.titulo(34)),
@@ -43,9 +41,9 @@ class EncabezadoDeProductos extends StatelessWidget {
             ),
           ],
         ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
+        Wrap(
           spacing: 10,
+          runSpacing: 10,
           children: [
             BotonDeContorno(
               texto: 'Categorías',
