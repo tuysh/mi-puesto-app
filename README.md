@@ -49,13 +49,29 @@ Ninguna pantalla necesita cambiar.
 
 ## Pendiente (no está en el diseño todavía)
 
+La pantalla de **Categorías** (crear y editar) ya existe en la app, pero
+se hizo sin diseño previo; falta dibujarla en el lienzo. Una categoría
+solo se puede eliminar cuando ya no tiene productos.
+
+
 - Pantalla de **Historial** de ventas.
-- Administración de **Categorías**.
 - **Detalle de una categoría** en Reportes.
 
-Estos tres puntos están marcados en el código con la palabra `PENDIENTE`.
+Estos dos puntos están marcados en el código con la palabra `PENDIENTE`.
 
 ## Tipografías
 
 Figtree y Bricolage Grotesque (licencia SIL Open Font; ver
 `assets/fuentes/`).
+
+## Icono de la aplicación
+
+El icono es el mismo emblema de la pantalla del PIN (`LogoDelPuesto`). No se
+dibuja a mano: se genera a partir del widget, para Android, iOS y web, con
+
+```
+flutter test herramientas/generar_iconos.dart
+```
+
+Si cambias el logo o los colores, vuelve a ejecutarlo. La imagen original
+queda en `assets/icono/icono.png`.
