@@ -1,6 +1,6 @@
 {
-    "name": "mi_puesto",
-    "short_name": "mi_puesto",
+    "name": "Mi Puesto",
+    "short_name": "Mi Puesto",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
