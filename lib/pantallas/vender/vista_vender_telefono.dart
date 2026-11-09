@@ -36,11 +36,13 @@ class VistaVenderTelefono extends StatelessWidget {
           child: EncabezadoDeVender(),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(18, 6, 18, 8),
+          padding: const EdgeInsets.only(top: 6, bottom: 12),
           child: FiltroDeCategorias(
             categorias: categorias,
             elegida: categoriaElegida,
             alElegir: alElegirCategoria,
+            enUnaSolaFila: true,
+            margenLateral: 18,
           ),
         ),
         const Padding(
@@ -56,7 +58,7 @@ class VistaVenderTelefono extends StatelessWidget {
                 productos: productos,
                 rejilla: rejillaDeTelefono,
                 alTocarProducto: alTocarProducto,
-                relleno: const EdgeInsets.fromLTRB(18, 8, 18, 16),
+                relleno: const EdgeInsets.fromLTRB(18, 10, 18, 16),
               ),
               const Positioned(
                 left: 18,

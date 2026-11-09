@@ -7,13 +7,15 @@ import 'package:mi_puesto/nucleo/tema/sombras.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
 import 'package:mi_puesto/nucleo/widgets/caja_tocable.dart';
 import 'package:mi_puesto/nucleo/widgets/cifra.dart';
+import 'package:mi_puesto/pantallas/vender/widgets/boton_de_quitar_pieza.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/insignia_de_cantidad.dart';
-import 'package:mi_puesto/pantallas/vender/widgets/plato_de_emoji.dart';
 
 /// El botón de un producto ("tesela"): emoji, nombre corto y precio.
+/// Tocarla suma una pieza al pedido.
 ///
-/// Cuando el producto ya está en el pedido se marca con un borde oscuro y
-/// una insignia con la cantidad en la esquina.
+/// Cuando el producto ya está en el pedido se marca con un borde oscuro,
+/// una insignia con la cantidad arriba a la derecha y un "−" abajo a la
+/// izquierda para quitar una pieza.
 class TeselaDeProducto extends StatelessWidget {
   const TeselaDeProducto({
     super.key,
@@ -21,6 +23,7 @@ class TeselaDeProducto extends StatelessWidget {
     required this.colores,
     required this.cantidad,
     required this.alTocar,
+    required this.alQuitar,
   });
 
   final Producto producto;
@@ -31,7 +34,18 @@ class TeselaDeProducto extends StatelessWidget {
   /// Cuántas piezas de este producto lleva el pedido.
   final int cantidad;
 
+  /// Suma una pieza.
   final VoidCallback alTocar;
+
+  /// Quita una pieza.
+  final VoidCallback alQuitar;
+
+  /// Alto fijo de la tesela; las cuadrículas lo usan para sus renglones.
+  static const alto = 132.0;
+
+  /// Alto del renglón del precio. Es el mismo que la zona de toque del "−",
+  /// que se dibuja a su izquierda.
+  static const _altoDelPrecio = 46.0;
 
   @override
   Widget build(BuildContext context) {
@@ -57,19 +71,34 @@ class TeselaDeProducto extends StatelessWidget {
             boxShadow: estaEnElPedido ? null : Sombras.dura(alto: 3),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.fromLTRB(6, 12, 6, 0),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              spacing: 2,
               children: [
-                PlatoDeEmoji(emoji: producto.emoji),
                 Text(
-                  producto.nombreCorto,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Tipografia.texto(14, peso: 800, altura: 1.15),
+                  producto.emoji,
+                  style: const TextStyle(fontSize: 34, height: 1),
                 ),
-                Cifra(precio, tamano: 17, color: colores.tinta),
+                // El nombre ocupa el espacio que sobra y puede usar dos
+                // renglones.
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      producto.nombreCorto,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: Tipografia.texto(14, peso: 800, altura: 1.15),
+                    ),
+                  ),
+                ),
+                Container(
+                  height: _altoDelPrecio,
+                  alignment: Alignment.center,
+                  // Con el "−" a la izquierda, el precio se recorre para
+                  // quedar centrado en el espacio libre.
+                  padding: EdgeInsets.only(left: estaEnElPedido ? 42 : 0),
+                  child: Cifra(precio, tamano: 17, color: colores.tinta),
+                ),
               ],
             ),
           ),
@@ -79,6 +108,15 @@ class TeselaDeProducto extends StatelessWidget {
             top: -7,
             right: -7,
             child: InsigniaDeCantidad(cantidad: cantidad),
+          ),
+        if (estaEnElPedido)
+          Positioned(
+            left: 3,
+            bottom: 2,
+            child: BotonDeQuitarPieza(
+              alTocar: alQuitar,
+              etiqueta: 'Quitar un ${producto.nombre}',
+            ),
           ),
       ],
     );

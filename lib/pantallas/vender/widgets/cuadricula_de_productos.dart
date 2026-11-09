@@ -3,18 +3,19 @@ import 'package:mi_puesto/app/dependencias.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/tesela_de_producto.dart';
 
-/// En teléfono: siempre tres columnas de teselas cuadradas.
+/// En teléfono: siempre tres columnas.
 const rejillaDeTelefono = SliverGridDelegateWithFixedCrossAxisCount(
   crossAxisCount: 3,
+  mainAxisExtent: TeselaDeProducto.alto,
   crossAxisSpacing: 10,
   mainAxisSpacing: 10,
 );
 
-/// En tablet: tantas columnas como quepan, con teselas de 118 de alto y
-/// no más de 170 de ancho (cinco columnas en una tablet de 8.7").
+/// En tablet: tantas columnas como quepan, con teselas de no más de 170 de
+/// ancho (cinco columnas en una tablet de 8.7").
 const rejillaDeTablet = SliverGridDelegateWithMaxCrossAxisExtent(
   maxCrossAxisExtent: 170,
-  mainAxisExtent: 118,
+  mainAxisExtent: TeselaDeProducto.alto,
   crossAxisSpacing: 12,
   mainAxisSpacing: 12,
 );
@@ -60,6 +61,7 @@ class CuadriculaDeProductos extends StatelessWidget {
               colores: dependencias.catalogo.categoriaDe(producto).colores,
               cantidad: dependencias.pedido.cantidadDe(producto),
               alTocar: () => alTocarProducto(producto),
+              alQuitar: () => dependencias.pedido.quitar(producto),
             );
           },
         );
