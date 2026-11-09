@@ -5,7 +5,11 @@ import 'package:mi_puesto/datos/simulados/datos_de_ejemplo.dart';
 import 'package:mi_puesto/datos/simulados/espera_simulada.dart';
 
 class RepositorioDeCatalogoSimulado implements RepositorioDeCatalogo {
+  final List<Categoria> _categorias = [...categoriasDeEjemplo];
   final List<Producto> _productos = [...productosDeEjemplo];
+
+  /// Número que se usará para el `id` de la siguiente categoría nueva.
+  int _siguienteNumeroDeCategoria = categoriasDeEjemplo.length + 1;
 
   /// Número que se usará para el `id` del siguiente producto nuevo.
   int _siguienteNumero = productosDeEjemplo.length + 1;
@@ -13,7 +17,31 @@ class RepositorioDeCatalogoSimulado implements RepositorioDeCatalogo {
   @override
   Future<List<Categoria>> obtenerCategorias() async {
     await esperaSimulada();
-    return categoriasDeEjemplo;
+    return List.unmodifiable(_categorias);
+  }
+
+  @override
+  Future<Categoria> guardarCategoria(Categoria categoria) async {
+    await esperaSimulada();
+
+    if (categoria.esNueva) {
+      final creada = categoria.copiarCon(
+        id: 'categoria-$_siguienteNumeroDeCategoria',
+      );
+      _siguienteNumeroDeCategoria++;
+      _categorias.add(creada);
+      return creada;
+    }
+
+    final posicion = _categorias.indexWhere((c) => c.id == categoria.id);
+    _categorias[posicion] = categoria;
+    return categoria;
+  }
+
+  @override
+  Future<void> eliminarCategoria(String categoriaId) async {
+    await esperaSimulada();
+    _categorias.removeWhere((categoria) => categoria.id == categoriaId);
   }
 
   @override

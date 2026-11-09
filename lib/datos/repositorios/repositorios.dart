@@ -42,6 +42,14 @@ abstract interface class RepositorioDeVendedores {
 abstract interface class RepositorioDeCatalogo {
   Future<List<Categoria>> obtenerCategorias();
 
+  /// Crea la categoría si es nueva o la actualiza si ya existía.
+  /// Devuelve la categoría tal como quedó guardada (ya con `id`).
+  Future<Categoria> guardarCategoria(Categoria categoria);
+
+  /// Borra una categoría. La aplicación solo lo pide para categorías sin
+  /// productos; conviene que el servidor también lo rechace si los tiene.
+  Future<void> eliminarCategoria(String categoriaId);
+
   /// Devuelve todos los productos, incluidos los ocultos.
   Future<List<Producto>> obtenerProductos();
 
