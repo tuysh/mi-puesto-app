@@ -26,7 +26,7 @@ class ControladorDeCatalogo extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _categorias = await _repositorio.obtenerCategorias();
+      _categorias = [...await _repositorio.obtenerCategorias()];
       _productos = [...await _repositorio.obtenerProductos()];
       _estado = EstadoDeCarga.listo;
     } catch (_) {
@@ -67,6 +67,39 @@ class ControladorDeCatalogo extends ChangeNotifier {
 
       return producto.aLaVenta && esDeLaCategoria && coincideConLaBusqueda;
     }).toList();
+  }
+
+  /// Cuántos productos (visibles u ocultos) pertenecen a [categoria].
+  int cantidadDeProductosEn(Categoria categoria) {
+    return _productos.where((p) => p.categoriaId == categoria.id).length;
+  }
+
+  /// Guarda una categoría nueva o los cambios de una que ya existía.
+  Future<Categoria> guardarCategoria(Categoria categoria) async {
+    final guardada = await _repositorio.guardarCategoria(categoria);
+
+    final posicion = _categorias.indexWhere((c) => c.id == guardada.id);
+    final yaExistia = posicion != -1;
+    if (yaExistia) {
+      _categorias[posicion] = guardada;
+    } else {
+      _categorias.add(guardada);
+    }
+
+    notifyListeners();
+    return guardada;
+  }
+
+  /// Borra [categoria]. Solo se permite si no tiene productos, para que
+  /// ningún producto se quede sin categoría.
+  Future<void> eliminarCategoria(Categoria categoria) async {
+    if (cantidadDeProductosEn(categoria) > 0) {
+      throw StateError('No se puede eliminar una categoría con productos.');
+    }
+
+    await _repositorio.eliminarCategoria(categoria.id);
+    _categorias.removeWhere((c) => c.id == categoria.id);
+    notifyListeners();
   }
 
   /// Guarda un producto nuevo o los cambios de uno que ya existía.
