@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mi_puesto/app/mi_puesto_app.dart';
+import 'package:mi_puesto/pantallas/vender/widgets/boton_de_quitar_pieza.dart';
 
 /// Recorre el camino completo de una venta en teléfono, con los datos
 /// simulados: PIN → quién vende → vender → cobrar → venta registrada.
@@ -51,6 +52,40 @@ void main() {
     await tester.tap(find.text('Me equivoqué: corregir pedido'));
     await esperarRespuesta(tester);
     expect(find.text('3 productos · ver'), findsOneWidget);
+  });
+
+  testWidgets('el "−" de un producto quita una pieza del pedido', (
+    tester,
+  ) async {
+    usarPantallaDeTelefono(tester);
+    await tester.pumpWidget(const MiPuestoApp());
+    await esperarRespuesta(tester);
+    for (final digito in ['1', '2', '3', '4']) {
+      await tester.tap(find.text(digito));
+    }
+    await esperarRespuesta(tester);
+    await tester.tap(find.text('Entrar'));
+    await esperarRespuesta(tester);
+    await tester.tap(find.text('Mari'));
+    await esperarRespuesta(tester);
+
+    // Sin piezas en el pedido, el producto no tiene "−".
+    expect(find.byType(BotonDeQuitarPieza), findsNothing);
+
+    await tester.tap(find.text('Flan'));
+    await tester.tap(find.text('Flan'));
+    await esperarRespuesta(tester);
+    expect(find.text('2 productos · ver'), findsOneWidget);
+
+    await tester.tap(find.byType(BotonDeQuitarPieza));
+    await esperarRespuesta(tester);
+    expect(find.text('1 producto · ver'), findsOneWidget);
+
+    // Al quitar la última pieza, el "−" desaparece con ella.
+    await tester.tap(find.byType(BotonDeQuitarPieza));
+    await esperarRespuesta(tester);
+    expect(find.byType(BotonDeQuitarPieza), findsNothing);
+    expect(find.text('Toca un producto para sumarlo'), findsOneWidget);
   });
 
   testWidgets('un PIN incorrecto no deja entrar', (tester) async {
