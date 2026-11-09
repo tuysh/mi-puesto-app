@@ -3,9 +3,11 @@ import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
 import 'package:mi_puesto/nucleo/widgets/caja_tocable.dart';
 import 'package:mi_puesto/pantallas/principal/destino.dart';
+import 'package:mi_puesto/pantallas/principal/widgets/icono_de_destino.dart';
 
 /// Un botón del menú de navegación: icono arriba y nombre abajo.
-/// El de la sección actual se pinta con fondo rosa.
+/// El de la sección actual se distingue por la píldora rosa de su icono y
+/// por el texto más oscuro.
 class BotonDeDestino extends StatelessWidget {
   const BotonDeDestino({
     super.key,
@@ -13,37 +15,43 @@ class BotonDeDestino extends StatelessWidget {
     required this.estaElegido,
     required this.alTocar,
     this.ancho = 72,
+    this.tamanoDePildora = const Size(60, 32),
     this.tamanoDeIcono = 24,
-    this.tamanoDeTexto = 12,
   });
 
   final Destino destino;
   final bool estaElegido;
   final VoidCallback alTocar;
   final double ancho;
+  final Size tamanoDePildora;
   final double tamanoDeIcono;
-  final double tamanoDeTexto;
 
   @override
   Widget build(BuildContext context) {
     return CajaTocable(
       alTocar: alTocar,
       radio: 16,
-      decoracion: BoxDecoration(
-        color: estaElegido ? Colores.acentoSuave : null,
-      ),
       child: Container(
         width: ancho,
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          spacing: 2,
+          spacing: 3,
           children: [
-            Icon(destino.icono, size: tamanoDeIcono, color: Colores.tinta),
+            IconoDeDestino(
+              icono: destino.icono,
+              estaElegido: estaElegido,
+              tamanoDePildora: tamanoDePildora,
+              tamanoDeIcono: tamanoDeIcono,
+            ),
             Text(
               destino.etiqueta,
               maxLines: 1,
-              style: Tipografia.texto(tamanoDeTexto, peso: 800),
+              style: Tipografia.texto(
+                13,
+                peso: estaElegido ? 800 : 700,
+                color: estaElegido ? Colores.tinta : Colores.tintaSuave,
+              ),
             ),
           ],
         ),
