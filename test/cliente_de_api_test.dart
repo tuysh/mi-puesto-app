@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -11,6 +12,7 @@ import 'package:mi_puesto/datos/http/almacen_de_sesion_en_memoria.dart';
 import 'package:mi_puesto/datos/http/conversion_de_json.dart';
 import 'package:mi_puesto/datos/modelos/dinero.dart';
 import 'package:mi_puesto/datos/modelos/estado_de_acceso.dart';
+import 'package:mi_puesto/datos/modelos/foto_nueva.dart';
 import 'package:mi_puesto/datos/modelos/linea_de_pedido.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/datos/modelos/vendedor.dart';
@@ -179,6 +181,59 @@ void main() {
     otras.sesion.avisarSiSePierdeLaSesion(() => avisos++);
     expect(await otras.sesion.consultarAcceso(), EstadoDeAcceso.sinSesion);
     expect(avisos, 1);
+  });
+
+  test('la foto se sube aparte, como archivo y con el token', () async {
+    final peticiones = <http.Request>[];
+    final conexiones = Conexiones.http(
+      urlDelServidor: 'https://servidor.prueba',
+      almacen: AlmacenDeSesionEnMemoria(sesionGuardada),
+      cliente: MockClient((peticion) async {
+        peticiones.add(peticion);
+        return json({
+          'id': 2,
+          'nombre': 'Pay de limón',
+          'nombre_corto': 'Pay limón',
+          'emoji': '',
+          'letras': 'PL',
+          // En desarrollo la dirección llega sin el inicio.
+          'foto_url': peticion.method == 'PUT' ? '/media/puestos/7/a.webp' : '',
+          'precio': '45.00',
+          'costo': '18.00',
+          'a_la_venta': true,
+          'categoria_id': 1,
+        });
+      }),
+    );
+
+    final conFoto = await conexiones.catalogo.subirFotoDeProducto(
+      '2',
+      FotoNueva(
+        bytes: Uint8List.fromList([1, 2, 3]),
+        nombreDeArchivo: 'pay.jpg',
+      ),
+    );
+    final subida = peticiones.single;
+    expect(subida.method, 'PUT');
+    expect(subida.url.path, '/api/v1/puestos/7/productos/2/foto');
+    expect(subida.headers['Authorization'], 'Bearer abc');
+    expect(subida.headers['content-type'], startsWith('multipart/form-data'));
+    expect(subida.body, contains('name="foto"; filename="pay.jpg"'));
+    expect(conFoto.fotoUrl, 'https://servidor.prueba/media/puestos/7/a.webp');
+    expect(conFoto.letras, 'PL');
+
+    final sinFoto = await conexiones.catalogo.quitarFotoDeProducto('2');
+    expect(peticiones.last.method, 'DELETE');
+    expect(sinFoto.fotoUrl, isEmpty);
+
+    // Las letras viajan con el producto; la foto no.
+    await conexiones.catalogo.guardarProducto(
+      pay.copiarCon(emoji: '', letras: 'PL', fotoUrl: 'https://x/y.webp'),
+    );
+    final cuerpo = jsonDecode(peticiones.last.body) as Map<String, dynamic>;
+    expect(cuerpo['letras'], 'PL');
+    expect(cuerpo['emoji'], '');
+    expect(cuerpo.containsKey('foto_url'), isFalse);
   });
 
   test('una venta sin respuesta se reintenta con el mismo uuid', () async {

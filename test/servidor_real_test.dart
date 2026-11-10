@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:mi_puesto/datos/conexiones.dart';
 import 'package:mi_puesto/datos/error_del_servidor.dart';
 import 'package:mi_puesto/datos/http/almacen_de_sesion_en_memoria.dart';
@@ -8,6 +11,7 @@ import 'package:mi_puesto/datos/modelos/caja.dart';
 import 'package:mi_puesto/datos/modelos/categoria.dart';
 import 'package:mi_puesto/datos/modelos/dinero.dart';
 import 'package:mi_puesto/datos/modelos/estado_de_acceso.dart';
+import 'package:mi_puesto/datos/modelos/foto_nueva.dart';
 import 'package:mi_puesto/datos/modelos/linea_de_pedido.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/datos/modelos/reporte.dart';
@@ -16,8 +20,10 @@ import 'package:mi_puesto/nucleo/tema/colores.dart';
 /// Prueba los repositorios `…Http` contra un servidor de verdad.
 ///
 /// Normalmente se salta. Para correrla, levanta el backend en tu
-/// computadora con los datos de `python manage.py sembrar_demo` (en una
-/// base de datos que se pueda ensuciar) y ejecuta:
+/// computadora con los datos de `python manage.py sembrar_demo` recién
+/// sembrados (en una base de datos que se pueda ensuciar: la prueba cierra
+/// la caja y crea cuentas, así que no se puede repetir sobre la misma) y
+/// ejecuta:
 ///
 /// ```
 /// SERVIDOR_DE_PRUEBA=http://127.0.0.1:8000 flutter test test/servidor_real_test.dart
@@ -222,6 +228,37 @@ void main() {
     expect(oculto.aLaVenta, isFalse);
     expect((await catalogo.obtenerProductos()).single.nombreCorto, 'Mango');
 
+    // Imagen: letras en vez de emoji, y una foto que se sube y se quita.
+    final conLetras = await catalogo.guardarProducto(
+      oculto.copiarCon(emoji: '', letras: 'Ma'),
+    );
+    expect(conLetras.emoji, isEmpty);
+    expect(conLetras.letras, 'Ma');
+    final conFoto = await catalogo.subirFotoDeProducto(
+      mango.id,
+      FotoNueva(bytes: fotoDePrueba, nombreDeArchivo: 'mango.png'),
+    );
+    expect(conFoto.fotoUrl, startsWith('http'));
+    expect(conFoto.letras, 'Ma');
+    final foto = await http.get(Uri.parse(conFoto.fotoUrl));
+    expect(foto.statusCode, 200);
+    expect(foto.headers['content-type'], contains('image'));
+    expect((await catalogo.obtenerProductos()).single.fotoUrl, conFoto.fotoUrl);
+    final sinFoto = await catalogo.quitarFotoDeProducto(mango.id);
+    expect(sinFoto.fotoUrl, isEmpty);
+
+    // Un archivo que no es imagen trae la explicación del servidor.
+    await expectLater(
+      catalogo.subirFotoDeProducto(
+        mango.id,
+        FotoNueva(
+          bytes: Uint8List.fromList(utf8.encode('no soy una foto')),
+          nombreDeArchivo: 'nota.jpg',
+        ),
+      ),
+      throwsA(isA<ErrorDelServidor>().having((e) => e.codigo, 'codigo', 400)),
+    );
+
     // Una categoría con productos no se puede eliminar.
     await expectLater(
       catalogo.eliminarCategoria(frutas.id),
@@ -248,3 +285,8 @@ void main() {
     expect(dia.ventasPorCategoria.single.categoria.nombre, 'Fruta picada');
   }, skip: razonParaSaltar);
 }
+
+/// Una imagen PNG diminuta (2 × 2 puntos rosas), válida de verdad.
+final fotoDePrueba = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEklEQVR4nGM4opV0RCuJAUIBACZWBUHn+eHKAAAAAElFTkSuQmCC',
+);
