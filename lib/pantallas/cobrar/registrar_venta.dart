@@ -11,8 +11,14 @@ Future<bool> registrarVenta(BuildContext context, {Dinero? pagoCon}) async {
   try {
     await Dependencias.de(context).ventas.registrarVenta(pagoCon: pagoCon);
     return true;
-  } catch (_) {
-    if (context.mounted) mostrarAviso(context, 'No se pudo registrar la venta');
+  } catch (error) {
+    if (context.mounted) {
+      mostrarAvisoDeError(
+        context,
+        error,
+        siNoHayExplicacion: 'No se pudo registrar la venta',
+      );
+    }
     return false;
   }
 }

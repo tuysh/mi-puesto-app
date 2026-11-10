@@ -14,7 +14,13 @@ Future<void> cambiarVisibilidad(
 
   try {
     await catalogo.guardarProducto(producto.copiarCon(aLaVenta: aLaVenta));
-  } catch (_) {
-    if (context.mounted) mostrarAviso(context, 'No se pudo guardar el cambio');
+  } catch (error) {
+    if (context.mounted) {
+      mostrarAvisoDeError(
+        context,
+        error,
+        siNoHayExplicacion: 'No se pudo guardar el cambio',
+      );
+    }
   }
 }

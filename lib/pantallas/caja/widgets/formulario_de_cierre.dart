@@ -57,10 +57,14 @@ class _EstadoDeFormularioDeCierre extends State<FormularioDeCierre> {
 
       mostrarAviso(context, 'Caja cerrada');
       cerrarPantalla(context);
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
 
-      mostrarAviso(context, 'No se pudo cerrar la caja');
+      mostrarAvisoDeError(
+        context,
+        error,
+        siNoHayExplicacion: 'No se pudo cerrar la caja',
+      );
       setState(() => _cerrando = false);
     }
   }

@@ -84,8 +84,14 @@ class _EstadoDeFormularioDeCategoria extends State<FormularioDeCategoria> {
 
       mostrarAviso(context, 'Categoría guardada');
       widget.alGuardar(guardada);
-    } catch (_) {
-      if (mounted) mostrarAviso(context, 'No se pudo guardar la categoría');
+    } catch (error) {
+      if (mounted) {
+        mostrarAvisoDeError(
+          context,
+          error,
+          siNoHayExplicacion: 'No se pudo guardar la categoría',
+        );
+      }
     } finally {
       if (mounted) setState(() => _guardando = false);
     }

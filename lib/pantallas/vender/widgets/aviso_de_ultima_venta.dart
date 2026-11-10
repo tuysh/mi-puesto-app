@@ -11,9 +11,13 @@ class AvisoDeUltimaVenta extends StatelessWidget {
   Future<void> _corregir(BuildContext context) async {
     try {
       await Dependencias.de(context).ventas.corregirUltimaVenta();
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
-        mostrarAviso(context, 'No se pudo corregir la venta');
+        mostrarAvisoDeError(
+          context,
+          error,
+          siNoHayExplicacion: 'No se pudo corregir la venta',
+        );
       }
     }
   }

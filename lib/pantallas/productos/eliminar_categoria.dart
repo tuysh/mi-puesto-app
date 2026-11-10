@@ -39,9 +39,13 @@ Future<bool> eliminarCategoria(
     await catalogo.eliminarCategoria(categoria);
     if (context.mounted) mostrarAviso(context, 'Categoría eliminada');
     return true;
-  } catch (_) {
+  } catch (error) {
     if (context.mounted) {
-      mostrarAviso(context, 'No se pudo eliminar la categoría');
+      mostrarAvisoDeError(
+        context,
+        error,
+        siNoHayExplicacion: 'No se pudo eliminar la categoría',
+      );
     }
     return false;
   }

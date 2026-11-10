@@ -128,8 +128,14 @@ class _EstadoDeFormularioDeProducto extends State<FormularioDeProducto> {
 
       mostrarAviso(context, 'Cambios guardados');
       widget.alGuardar(guardado);
-    } catch (_) {
-      if (mounted) mostrarAviso(context, 'No se pudo guardar el producto');
+    } catch (error) {
+      if (mounted) {
+        mostrarAvisoDeError(
+          context,
+          error,
+          siNoHayExplicacion: 'No se pudo guardar el producto',
+        );
+      }
     } finally {
       if (mounted) setState(() => _guardando = false);
     }
