@@ -7,10 +7,12 @@ import 'package:mi_puesto/nucleo/tema/sombras.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
 import 'package:mi_puesto/nucleo/widgets/caja_tocable.dart';
 import 'package:mi_puesto/nucleo/widgets/cifra.dart';
+import 'package:mi_puesto/nucleo/widgets/visual_de_producto.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/boton_de_quitar_pieza.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/insignia_de_cantidad.dart';
 
-/// El botón de un producto ("tesela"): emoji, nombre corto y precio.
+/// El botón de un producto ("tesela"): su imagen (foto, emoji o letras),
+/// nombre corto y precio.
 /// Tocarla suma una pieza al pedido.
 ///
 /// Cuando el producto ya está en el pedido se marca con un borde oscuro,
@@ -41,11 +43,14 @@ class TeselaDeProducto extends StatelessWidget {
   final VoidCallback alQuitar;
 
   /// Alto fijo de la tesela; las cuadrículas lo usan para sus renglones.
-  static const alto = 132.0;
+  static const alto = 136.0;
 
   /// Alto del renglón del precio. Es el mismo que la zona de toque del "−",
   /// que se dibuja a su izquierda.
-  static const _altoDelPrecio = 46.0;
+  static const _altoDelPrecio = 44.0;
+
+  /// Alto de la franja de arriba, donde va la foto, el emoji o las letras.
+  static const _altoDeLaImagen = 62.0;
 
   @override
   Widget build(BuildContext context) {
@@ -65,22 +70,35 @@ class TeselaDeProducto extends StatelessWidget {
           radio: Radios.tarjeta,
           decoracion: BoxDecoration(
             color: colores.fondo,
-            border: estaEnElPedido
-                ? Border.all(color: Colores.tinta, width: 3)
-                : null,
             boxShadow: estaEnElPedido ? null : Sombras.dura(alto: 3),
           ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 12, 6, 0),
-            child: Column(
-              children: [
-                Text(
-                  producto.emoji,
-                  style: const TextStyle(fontSize: 34, height: 1),
+          child: Column(
+            children: [
+              // La foto llega hasta la orilla, así que se recorta con las
+              // esquinas redondeadas de la tesela.
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(Radios.tarjeta),
                 ),
-                // El nombre ocupa el espacio que sobra y puede usar dos
-                // renglones.
-                Expanded(
+                child: SizedBox(
+                  height: _altoDeLaImagen,
+                  width: double.infinity,
+                  child: VisualDeProducto(
+                    nombre: producto.nombreCorto,
+                    tinta: colores.tinta,
+                    tamanoDeEmoji: 34,
+                    tamanoDeLetras: 28,
+                    emoji: producto.emoji,
+                    letras: producto.letras,
+                    fotoUrl: producto.fotoUrl,
+                  ),
+                ),
+              ),
+              // El nombre ocupa el espacio que sobra y puede usar dos
+              // renglones.
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(6, 2, 6, 0),
                   child: Center(
                     child: Text(
                       producto.nombreCorto,
@@ -91,18 +109,29 @@ class TeselaDeProducto extends StatelessWidget {
                     ),
                   ),
                 ),
-                Container(
-                  height: _altoDelPrecio,
-                  alignment: Alignment.center,
-                  // Con el "−" a la izquierda, el precio se recorre para
-                  // quedar centrado en el espacio libre.
-                  padding: EdgeInsets.only(left: estaEnElPedido ? 42 : 0),
-                  child: Cifra(precio, tamano: 17, color: colores.tinta),
-                ),
-              ],
-            ),
+              ),
+              Container(
+                height: _altoDelPrecio,
+                alignment: Alignment.center,
+                // Con el "−" a la izquierda, el precio se recorre para
+                // quedar centrado en el espacio libre.
+                padding: EdgeInsets.only(left: estaEnElPedido ? 42 : 0),
+                child: Cifra(precio, tamano: 17, color: colores.tinta),
+              ),
+            ],
           ),
         ),
+        // El borde oscuro va ENCIMA de todo, para que la foto no lo tape.
+        // IgnorePointer deja pasar el toque a la tesela.
+        if (estaEnElPedido)
+          IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(Radios.tarjeta),
+                border: Border.all(color: Colores.tinta, width: 3),
+              ),
+            ),
+          ),
         if (estaEnElPedido)
           Positioned(
             top: -7,

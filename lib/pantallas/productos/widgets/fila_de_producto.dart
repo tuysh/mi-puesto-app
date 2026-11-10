@@ -6,7 +6,7 @@ import 'package:mi_puesto/nucleo/formato/formato_dinero.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
 import 'package:mi_puesto/nucleo/widgets/cifra.dart';
-import 'package:mi_puesto/nucleo/widgets/cuadro_de_emoji.dart';
+import 'package:mi_puesto/nucleo/widgets/imagen_de_producto.dart';
 import 'package:mi_puesto/nucleo/widgets/interruptor.dart';
 import 'package:mi_puesto/nucleo/widgets/pastilla.dart';
 import 'package:mi_puesto/pantallas/productos/widgets/columnas_de_tabla.dart';
@@ -109,7 +109,7 @@ class FilaDeProducto extends StatelessWidget {
     return Row(
       spacing: 12,
       children: [
-        CuadroDeEmoji(emoji: producto.emoji, fondo: categoria.colores.fondo),
+        ImagenDeProducto.de(producto, colores: categoria.colores),
         Expanded(
           child: Text(
             producto.nombre,

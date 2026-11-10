@@ -5,6 +5,7 @@ import 'package:mi_puesto/controladores/controlador_de_pedido.dart';
 import 'package:mi_puesto/controladores/controlador_de_ventas.dart';
 import 'package:mi_puesto/controladores/sesion.dart';
 import 'package:mi_puesto/datos/conexiones.dart';
+import 'package:mi_puesto/nucleo/pedir_foto.dart';
 import 'package:mi_puesto/nucleo/tema/tema.dart';
 import 'package:mi_puesto/pantallas/acceso/pantalla_de_arranque.dart';
 import 'package:mi_puesto/pantallas/acceso/pantalla_de_iniciar_sesion.dart';
@@ -12,10 +13,18 @@ import 'package:mi_puesto/pantallas/acceso/pantalla_de_iniciar_sesion.dart';
 /// La raíz de la aplicación: crea los objetos compartidos y abre la
 /// pantalla de arranque, que decide por dónde se entra.
 class MiPuestoApp extends StatefulWidget {
-  const MiPuestoApp({super.key, this.conexiones});
+  const MiPuestoApp({
+    super.key,
+    this.conexiones,
+    this.pedirFoto = pedirFotoDelDispositivo,
+  });
 
   /// De dónde salen los datos. Si no se indica, se usan datos simulados.
   final Conexiones? conexiones;
+
+  /// Cómo se le pide una foto a la persona. Solo se cambia en las pruebas,
+  /// donde no hay cámara ni galería.
+  final PedirFoto pedirFoto;
 
   @override
   State<MiPuestoApp> createState() => _EstadoDeMiPuestoApp();
@@ -78,6 +87,7 @@ class _EstadoDeMiPuestoApp extends State<MiPuestoApp> {
       catalogo: _catalogo,
       pedido: _pedido,
       ventas: _ventas,
+      pedirFoto: widget.pedirFoto,
       child: MaterialApp(
         title: 'Mi puesto',
         navigatorKey: _navegador,

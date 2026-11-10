@@ -36,10 +36,9 @@ class ListaDePedido extends StatelessWidget {
             for (final linea in pedido.lineas)
               RenglonDePedido(
                 linea: linea,
-                fondoDelEmoji: dependencias.catalogo
+                colores: dependencias.catalogo
                     .categoriaDe(linea.producto)
-                    .colores
-                    .fondo,
+                    .colores,
                 alQuitar: () => pedido.quitar(linea.producto),
                 alAgregar: () => pedido.agregar(linea.producto),
               ),

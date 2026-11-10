@@ -1,23 +1,22 @@
 import 'package:flutter/widgets.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
 import 'package:mi_puesto/nucleo/widgets/cifra.dart';
-import 'package:mi_puesto/nucleo/widgets/cuadro_de_emoji.dart';
 import 'package:mi_puesto/pantallas/hoy/widgets/barra_de_proporcion.dart';
 
-/// Un producto de "Lo más vendido": emoji, nombre, piezas vendidas y una
+/// Un producto de "Lo más vendido": su imagen, nombre, piezas vendidas y una
 /// barra que lo compara con el producto más vendido.
 class RenglonDeMasVendido extends StatelessWidget {
   const RenglonDeMasVendido({
     super.key,
-    required this.emoji,
-    required this.fondoDelEmoji,
+    required this.imagen,
     required this.nombre,
     required this.piezas,
     required this.fraccion,
   });
 
-  final String emoji;
-  final Color fondoDelEmoji;
+  /// El cuadrito con la foto, el emoji o las letras del producto.
+  final Widget imagen;
+
   final String nombre;
   final int piezas;
 
@@ -29,7 +28,7 @@ class RenglonDeMasVendido extends StatelessWidget {
     return Row(
       spacing: 12,
       children: [
-        CuadroDeEmoji(emoji: emoji, fondo: fondoDelEmoji),
+        imagen,
         Expanded(
           child: Column(
             spacing: 5,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mi_puesto/app/dependencias.dart';
+import 'package:mi_puesto/controladores/controlador_de_catalogo.dart';
 import 'package:mi_puesto/datos/modelos/dinero.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/nucleo/avisos.dart';
@@ -11,11 +12,13 @@ import 'package:mi_puesto/nucleo/widgets/boton_principal.dart';
 import 'package:mi_puesto/nucleo/widgets/campo_de_texto.dart';
 import 'package:mi_puesto/nucleo/widgets/campo_etiquetado.dart';
 import 'package:mi_puesto/nucleo/widgets/columna_con_pie.dart';
-import 'package:mi_puesto/pantallas/productos/elegir_emoji.dart';
-import 'package:mi_puesto/pantallas/productos/widgets/boton_de_emoji.dart';
+import 'package:mi_puesto/nucleo/widgets/imagen_de_producto.dart';
+import 'package:mi_puesto/pantallas/productos/elegir_imagen.dart';
+import 'package:mi_puesto/pantallas/productos/imagen_elegida.dart';
+import 'package:mi_puesto/pantallas/productos/widgets/boton_con_lapiz.dart';
 import 'package:mi_puesto/pantallas/productos/widgets/selector_de_categoria.dart';
 
-/// El formulario para crear o editar un producto: emoji, nombres,
+/// El formulario para crear o editar un producto: imagen, nombres,
 /// categoría, precio y costo. Mientras se escribe muestra cuánto se gana
 /// por pieza.
 class FormularioDeProducto extends StatefulWidget {
@@ -47,7 +50,8 @@ class _EstadoDeFormularioDeProducto extends State<FormularioDeProducto> {
     text: _textoInicialDeMonto(widget.producto.costo),
   );
 
-  late String _emoji = widget.producto.emoji;
+  /// Cómo se ve el producto al vender: emoji, letras o foto.
+  late ImagenElegida _imagen = ImagenElegida.de(widget.producto);
   late String _categoriaId = widget.producto.categoriaId;
 
   bool _guardando = false;
@@ -77,21 +81,21 @@ class _EstadoDeFormularioDeProducto extends State<FormularioDeProducto> {
   /// afecta a otra parte (el título o la ganancia).
   void _redibujar(String _) => setState(() {});
 
-  Future<void> _cambiarEmoji() async {
+  Future<void> _cambiarImagen() async {
     final catalogo = Dependencias.de(context).catalogo;
     final categoria = catalogo.categorias.firstWhere(
       (categoria) => categoria.id == _categoriaId,
     );
 
-    final emoji = await elegirEmoji(
+    final imagen = await elegirImagen(
       context,
-      emojiActual: _emoji,
+      imagenActual: _imagen,
       nombreDelProducto: _nombre.text.trim(),
-      fondo: categoria.colores.fondo,
+      colores: categoria.colores,
     );
-    if (emoji == null) return;
+    if (imagen == null) return;
 
-    setState(() => _emoji = emoji);
+    setState(() => _imagen = imagen);
   }
 
   Future<void> _guardar() async {
@@ -114,7 +118,9 @@ class _EstadoDeFormularioDeProducto extends State<FormularioDeProducto> {
     final cambiado = widget.producto.copiarCon(
       nombre: nombre,
       nombreCorto: nombreCorto.isEmpty ? nombre : nombreCorto,
-      emoji: _emoji,
+      emoji: _imagen.emoji,
+      letras: _imagen.letras,
+      fotoUrl: _imagen.fotoUrl,
       categoriaId: _categoriaId,
       precio: precio,
       costo: costo,
@@ -123,11 +129,24 @@ class _EstadoDeFormularioDeProducto extends State<FormularioDeProducto> {
     final catalogo = Dependencias.de(context).catalogo;
     setState(() => _guardando = true);
     try {
-      final guardado = await catalogo.guardarProducto(cambiado);
+      final guardado = await catalogo.guardarProducto(
+        cambiado,
+        fotoNueva: _imagen.fotoNueva,
+      );
       if (!mounted) return;
 
       mostrarAviso(context, 'Cambios guardados');
       widget.alGuardar(guardado);
+    } on FotoSinGuardar catch (error) {
+      // El producto ya existe: se sigue adelante con él para que otro
+      // intento no lo cree dos veces.
+      if (!mounted) return;
+
+      mostrarAviso(
+        context,
+        'El producto se guardó, pero su foto no. Intenta ponerla otra vez',
+      );
+      widget.alGuardar(error.producto);
     } catch (error) {
       if (mounted) {
         mostrarAvisoDeError(
@@ -162,10 +181,19 @@ class _EstadoDeFormularioDeProducto extends State<FormularioDeProducto> {
         Row(
           spacing: 14,
           children: [
-            BotonDeEmoji(
-              emoji: _emoji,
+            BotonConLapiz(
+              etiqueta: 'Cambiar imagen',
               fondo: categoria.colores.fondo,
-              alTocar: _cambiarEmoji,
+              alTocar: _cambiarImagen,
+              child: ImagenDeProducto(
+                nombre: nombre,
+                colores: categoria.colores,
+                emoji: _imagen.emoji,
+                letras: _imagen.letras,
+                fotoUrl: _imagen.fotoUrl,
+                fotoLocal: _imagen.fotoNueva?.bytes,
+                tamano: BotonConLapiz.tamano,
+              ),
             ),
             Expanded(
               child: Text(

@@ -4,7 +4,7 @@ import 'package:mi_puesto/nucleo/formato/formato_dinero.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
 import 'package:mi_puesto/nucleo/widgets/cifra.dart';
-import 'package:mi_puesto/nucleo/widgets/cuadro_de_emoji.dart';
+import 'package:mi_puesto/nucleo/widgets/imagen_de_producto.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/boton_de_cantidad.dart';
 
 /// Un renglón del pedido: el producto, su subtotal y los botones para
@@ -13,13 +13,15 @@ class RenglonDePedido extends StatelessWidget {
   const RenglonDePedido({
     super.key,
     required this.linea,
-    required this.fondoDelEmoji,
+    required this.colores,
     required this.alQuitar,
     required this.alAgregar,
   });
 
   final LineaDePedido linea;
-  final Color fondoDelEmoji;
+
+  /// Los colores de la categoría del producto.
+  final ParDeColores colores;
   final VoidCallback alQuitar;
   final VoidCallback alAgregar;
 
@@ -35,11 +37,7 @@ class RenglonDePedido extends StatelessWidget {
       child: Row(
         spacing: 10,
         children: [
-          CuadroDeEmoji(
-            emoji: linea.producto.emoji,
-            fondo: fondoDelEmoji,
-            tamano: 38,
-          ),
+          ImagenDeProducto.de(linea.producto, colores: colores, tamano: 38),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

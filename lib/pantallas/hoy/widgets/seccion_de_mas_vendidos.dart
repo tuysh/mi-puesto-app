@@ -3,6 +3,7 @@ import 'package:mi_puesto/app/dependencias.dart';
 import 'package:mi_puesto/controladores/controlador_de_catalogo.dart';
 import 'package:mi_puesto/datos/modelos/resumen_del_dia.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
+import 'package:mi_puesto/nucleo/widgets/imagen_de_producto.dart';
 import 'package:mi_puesto/nucleo/widgets/tarjeta_de_seccion.dart';
 import 'package:mi_puesto/pantallas/hoy/widgets/renglon_de_mas_vendido.dart';
 
@@ -26,8 +27,7 @@ class SeccionDeMasVendidos extends StatelessWidget {
       children: [
         for (final vendido in masVendidos)
           RenglonDeMasVendido(
-            emoji: vendido.emoji,
-            fondoDelEmoji: _fondoDelEmoji(catalogo, vendido),
+            imagen: _imagen(catalogo, vendido),
             // Si el producto sigue en el catálogo se usa su nombre corto,
             // que es el que cabe mejor en el renglón.
             nombre:
@@ -40,14 +40,24 @@ class SeccionDeMasVendidos extends StatelessWidget {
     );
   }
 
-  /// El color de la categoría del producto, o gris si ya no existe.
-  Color _fondoDelEmoji(
-    ControladorDeCatalogo catalogo,
-    ProductoVendido vendido,
-  ) {
+  /// La imagen del producto como está hoy en el catálogo. Si el producto
+  /// ya no existe, el emoji con el que se vendió sobre un fondo gris.
+  Widget _imagen(ControladorDeCatalogo catalogo, ProductoVendido vendido) {
     final producto = catalogo.buscarProducto(vendido.productoId);
-    if (producto == null) return Colores.superficieHundida;
+    if (producto == null) {
+      return ImagenDeProducto(
+        nombre: vendido.nombre,
+        emoji: vendido.emoji,
+        colores: const ParDeColores(
+          fondo: Colores.superficieHundida,
+          tinta: Colores.tinta,
+        ),
+      );
+    }
 
-    return catalogo.categoriaDe(producto).colores.fondo;
+    return ImagenDeProducto.de(
+      producto,
+      colores: catalogo.categoriaDe(producto).colores,
+    );
   }
 }
