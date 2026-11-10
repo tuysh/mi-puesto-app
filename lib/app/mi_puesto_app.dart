@@ -6,10 +6,11 @@ import 'package:mi_puesto/controladores/controlador_de_ventas.dart';
 import 'package:mi_puesto/controladores/sesion.dart';
 import 'package:mi_puesto/datos/conexiones.dart';
 import 'package:mi_puesto/nucleo/tema/tema.dart';
-import 'package:mi_puesto/pantallas/acceso/pantalla_de_pin.dart';
+import 'package:mi_puesto/pantallas/acceso/pantalla_de_arranque.dart';
+import 'package:mi_puesto/pantallas/acceso/pantalla_de_iniciar_sesion.dart';
 
 /// La raíz de la aplicación: crea los objetos compartidos y abre la
-/// pantalla del PIN.
+/// pantalla de arranque, que decide por dónde se entra.
 class MiPuestoApp extends StatefulWidget {
   const MiPuestoApp({super.key, this.conexiones});
 
@@ -27,6 +28,9 @@ class _EstadoDeMiPuestoApp extends State<MiPuestoApp> {
   late final ControladorDePedido _pedido;
   late final ControladorDeVentas _ventas;
 
+  /// Permite cambiar de pantalla desde aquí, fuera de cualquier pantalla.
+  final _navegador = GlobalKey<NavigatorState>();
+
   @override
   void initState() {
     super.initState();
@@ -41,7 +45,20 @@ class _EstadoDeMiPuestoApp extends State<MiPuestoApp> {
       sesion: _sesion,
     );
 
-    _sesion.cargarPuesto();
+    _sesion.alPerderLaSesion = _volverAIniciarSesion;
+  }
+
+  /// El servidor dejó de reconocer la sesión: se suelta lo que estaba a
+  /// medias y se vuelve a pedir la cuenta.
+  void _volverAIniciarSesion() {
+    _pedido.vaciar();
+    _ventas.cerrarAviso();
+    _navegador.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute<void>(
+        builder: (context) => const PantallaDeIniciarSesion(),
+      ),
+      (ruta) => false,
+    );
   }
 
   @override
@@ -63,9 +80,10 @@ class _EstadoDeMiPuestoApp extends State<MiPuestoApp> {
       ventas: _ventas,
       child: MaterialApp(
         title: 'Mi puesto',
+        navigatorKey: _navegador,
         debugShowCheckedModeBanner: false,
         theme: crearTema(),
-        home: const PantallaDePin(),
+        home: const PantallaDeArranque(),
       ),
     );
   }

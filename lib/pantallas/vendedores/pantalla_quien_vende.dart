@@ -9,7 +9,9 @@ import 'package:mi_puesto/nucleo/widgets/ancho_maximo.dart';
 import 'package:mi_puesto/nucleo/widgets/cargador_de_futuro.dart';
 import 'package:mi_puesto/nucleo/widgets/dialogo_de_texto.dart';
 import 'package:mi_puesto/nucleo/widgets/encabezado_de_pantalla.dart';
+import 'package:mi_puesto/pantallas/acceso/cerrar_sesion.dart';
 import 'package:mi_puesto/pantallas/principal/pantalla_principal.dart';
+import 'package:mi_puesto/pantallas/vendedores/widgets/boton_de_cerrar_sesion.dart';
 import 'package:mi_puesto/pantallas/vendedores/widgets/cuadricula_de_vendedores.dart';
 
 /// Pantalla 2: se elige quién va a vender. Cada venta queda a su nombre.
@@ -43,8 +45,14 @@ class _EstadoDePantallaQuienVende extends State<PantallaQuienVende> {
     try {
       await repositorio.agregarVendedor(nombre);
       setState(() => _versionDeLaLista++);
-    } catch (_) {
-      if (mounted) mostrarAviso(context, 'No se pudo agregar a la persona');
+    } catch (error) {
+      if (mounted) {
+        mostrarAvisoDeError(
+          context,
+          error,
+          siNoHayExplicacion: 'No se pudo agregar a la persona',
+        );
+      }
     }
   }
 
@@ -86,6 +94,12 @@ class _EstadoDePantallaQuienVende extends State<PantallaQuienVende> {
                     15,
                     peso: 600,
                     color: Colores.tintaSuave,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: BotonDeCerrarSesion(
+                    alTocar: () => cerrarSesion(context),
                   ),
                 ),
               ],

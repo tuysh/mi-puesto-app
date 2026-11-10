@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mi_puesto/app/dependencias.dart';
+import 'package:mi_puesto/nucleo/avisos.dart';
 import 'package:mi_puesto/nucleo/navegacion.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
@@ -42,8 +43,27 @@ class _EstadoDePantallaDePin extends State<PantallaDePin> {
   }
 
   Future<void> _entrar() async {
+    final sesion = Dependencias.de(context).sesion;
+
     setState(() => _validando = true);
-    final esCorrecto = await Dependencias.de(context).sesion.validarPin(_pin);
+    final bool esCorrecto;
+    try {
+      esCorrecto = await sesion.validarPin(_pin);
+    } catch (error) {
+      // Sin internet, o el PIN quedó bloqueado por demasiados intentos.
+      if (!mounted) return;
+
+      mostrarAvisoDeError(
+        context,
+        error,
+        siNoHayExplicacion: 'No se pudo revisar el PIN. Intenta otra vez',
+      );
+      setState(() {
+        _pin = '';
+        _validando = false;
+      });
+      return;
+    }
 
     // Si la pantalla se cerró mientras se validaba, ya no hay nada que hacer.
     if (!mounted) return;
