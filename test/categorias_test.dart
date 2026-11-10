@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mi_puesto/app/mi_puesto_app.dart';
+import 'package:mi_puesto/datos/conexiones.dart';
 
 import 'flujo_de_venta_test.dart';
 
@@ -68,7 +69,9 @@ void main() {
 /// Entra a la aplicación y llega a Productos › Categorías.
 Future<void> abrirCategorias(WidgetTester tester) async {
   usarPantallaDeTelefono(tester);
-  await tester.pumpWidget(const MiPuestoApp());
+  await tester.pumpWidget(
+    MiPuestoApp(conexiones: Conexiones.simuladas(conSesionIniciada: true)),
+  );
   await esperarRespuesta(tester);
 
   for (final digito in ['1', '2', '3', '4']) {

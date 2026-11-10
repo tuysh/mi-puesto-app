@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mi_puesto/app/mi_puesto_app.dart';
+import 'package:mi_puesto/datos/conexiones.dart';
 import 'package:mi_puesto/pantallas/productos/widgets/boton_de_emoji.dart';
 
 import 'flujo_de_venta_test.dart';
@@ -9,7 +10,9 @@ import 'flujo_de_venta_test.dart';
 void main() {
   testWidgets('se puede cambiar el emoji de un producto', (tester) async {
     usarPantallaDeTelefono(tester);
-    await tester.pumpWidget(const MiPuestoApp());
+    await tester.pumpWidget(
+      MiPuestoApp(conexiones: Conexiones.simuladas(conSesionIniciada: true)),
+    );
     await esperarRespuesta(tester);
 
     // Entrar y llegar a Productos.

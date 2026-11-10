@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mi_puesto/app/mi_puesto_app.dart';
+import 'package:mi_puesto/datos/conexiones.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/boton_de_quitar_pieza.dart';
 
 /// Recorre el camino completo de una venta en teléfono, con los datos
@@ -8,7 +9,9 @@ import 'package:mi_puesto/pantallas/vender/widgets/boton_de_quitar_pieza.dart';
 void main() {
   testWidgets('se puede registrar una venta y ver el cambio', (tester) async {
     usarPantallaDeTelefono(tester);
-    await tester.pumpWidget(const MiPuestoApp());
+    await tester.pumpWidget(
+      MiPuestoApp(conexiones: Conexiones.simuladas(conSesionIniciada: true)),
+    );
     await esperarRespuesta(tester);
     expect(find.text('Puesto Doña Mari'), findsOneWidget);
 
@@ -58,7 +61,9 @@ void main() {
     tester,
   ) async {
     usarPantallaDeTelefono(tester);
-    await tester.pumpWidget(const MiPuestoApp());
+    await tester.pumpWidget(
+      MiPuestoApp(conexiones: Conexiones.simuladas(conSesionIniciada: true)),
+    );
     await esperarRespuesta(tester);
     for (final digito in ['1', '2', '3', '4']) {
       await tester.tap(find.text(digito));
@@ -90,7 +95,9 @@ void main() {
 
   testWidgets('un PIN incorrecto no deja entrar', (tester) async {
     usarPantallaDeTelefono(tester);
-    await tester.pumpWidget(const MiPuestoApp());
+    await tester.pumpWidget(
+      MiPuestoApp(conexiones: Conexiones.simuladas(conSesionIniciada: true)),
+    );
     await esperarRespuesta(tester);
 
     for (final digito in ['9', '9', '9', '9']) {
