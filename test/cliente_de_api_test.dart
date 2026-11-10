@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:mi_puesto/controladores/controlador_de_catalogo.dart';
 import 'package:mi_puesto/datos/conexiones.dart';
 import 'package:mi_puesto/datos/error_del_servidor.dart';
 import 'package:mi_puesto/datos/http/almacen_de_sesion.dart';
@@ -235,6 +236,59 @@ void main() {
     expect(cuerpo['emoji'], '');
     expect(cuerpo.containsKey('foto_url'), isFalse);
   });
+
+  test(
+    'al guardar con foto nueva vale la dirección que responde el PUT',
+    () async {
+      Map<String, Object> producto(String fotoUrl) => {
+        'id': 2,
+        'nombre': 'Pay de limón',
+        'nombre_corto': 'Pay limón',
+        'emoji': '🥧',
+        'letras': '',
+        'foto_url': fotoUrl,
+        'precio': '45.00',
+        'costo': '18.00',
+        'a_la_venta': true,
+        'categoria_id': 1,
+      };
+      final metodos = <String>[];
+      final conexiones = Conexiones.http(
+        urlDelServidor: 'https://servidor.prueba',
+        almacen: AlmacenDeSesionEnMemoria(sesionGuardada),
+        cliente: MockClient((peticion) async {
+          metodos.add(peticion.method);
+          if (peticion.url.path.endsWith('/categorias')) return json([]);
+          return switch (peticion.method) {
+            // La lista y el PATCH todavía traen la foto de antes…
+            'GET' => json([producto('https://fotos.prueba/vieja.webp')]),
+            'PATCH' => json(producto('https://fotos.prueba/vieja.webp')),
+            // …y el PUT estrena dirección; la vieja deja de existir.
+            _ => json(producto('https://fotos.prueba/nueva.webp')),
+          };
+        }),
+      );
+      final catalogo = ControladorDeCatalogo(conexiones.catalogo);
+      await catalogo.cargar();
+      final antes = catalogo.productos.single;
+      expect(antes.fotoUrl, 'https://fotos.prueba/vieja.webp');
+
+      final guardado = await catalogo.guardarProducto(
+        antes.copiarCon(fotoUrl: ''),
+        fotoNueva: FotoNueva(
+          bytes: Uint8List.fromList([1, 2, 3]),
+          nombreDeArchivo: 'pay.jpg',
+        ),
+      );
+
+      expect(metodos, ['GET', 'GET', 'PATCH', 'PUT']);
+      expect(guardado.fotoUrl, 'https://fotos.prueba/nueva.webp');
+      expect(
+        catalogo.productos.single.fotoUrl,
+        'https://fotos.prueba/nueva.webp',
+      );
+    },
+  );
 
   test('una venta sin respuesta se reintenta con el mismo uuid', () async {
     final cuerpos = <Map<String, dynamic>>[];

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mi_puesto/datos/modelos/linea_de_pedido.dart';
+import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/nucleo/formato/formato_dinero.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
@@ -13,12 +14,18 @@ class RenglonDePedido extends StatelessWidget {
   const RenglonDePedido({
     super.key,
     required this.linea,
+    required this.productoActual,
     required this.colores,
     required this.alQuitar,
     required this.alAgregar,
   });
 
   final LineaDePedido linea;
+
+  /// El producto como está AHORA en el catálogo. El pedido guarda el
+  /// producto como era al agregarlo; si después le cambiaron la foto, esa
+  /// copia trae una dirección que ya no existe.
+  final Producto productoActual;
 
   /// Los colores de la categoría del producto.
   final ParDeColores colores;
@@ -37,7 +44,7 @@ class RenglonDePedido extends StatelessWidget {
       child: Row(
         spacing: 10,
         children: [
-          ImagenDeProducto.de(linea.producto, colores: colores, tamano: 38),
+          ImagenDeProducto.de(productoActual, colores: colores, tamano: 38),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

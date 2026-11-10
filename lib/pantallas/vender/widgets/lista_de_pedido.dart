@@ -36,6 +36,9 @@ class ListaDePedido extends StatelessWidget {
             for (final linea in pedido.lineas)
               RenglonDePedido(
                 linea: linea,
+                productoActual:
+                    dependencias.catalogo.buscarProducto(linea.producto.id) ??
+                    linea.producto,
                 colores: dependencias.catalogo
                     .categoriaDe(linea.producto)
                     .colores,

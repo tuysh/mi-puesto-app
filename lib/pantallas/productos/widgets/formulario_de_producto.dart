@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mi_puesto/app/dependencias.dart';
 import 'package:mi_puesto/controladores/controlador_de_catalogo.dart';
+import 'package:mi_puesto/datos/error_del_servidor.dart';
 import 'package:mi_puesto/datos/modelos/dinero.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/nucleo/avisos.dart';
@@ -135,6 +136,9 @@ class _EstadoDeFormularioDeProducto extends State<FormularioDeProducto> {
       );
       if (!mounted) return;
 
+      // La foto ya está en el servidor: de aquí en adelante vale la
+      // dirección que respondió, no la foto local ni la de antes.
+      setState(() => _imagen = ImagenElegida.de(guardado));
       mostrarAviso(context, 'Cambios guardados');
       widget.alGuardar(guardado);
     } on FotoSinGuardar catch (error) {
@@ -142,10 +146,18 @@ class _EstadoDeFormularioDeProducto extends State<FormularioDeProducto> {
       // intento no lo cree dos veces.
       if (!mounted) return;
 
+      // Se dice por qué, si el servidor lo explicó ("La foto pesa más de
+      // 10 MB.", "Las fotos no están disponibles por ahora.").
+      final causa = error.causa;
+      final explicacion = causa is ErrorDelServidor
+          ? causa.mensaje
+          : 'Intenta ponerla otra vez';
+      debugPrint('No se pudo guardar la foto: $causa');
       mostrarAviso(
         context,
-        'El producto se guardó, pero su foto no. Intenta ponerla otra vez',
+        'El producto se guardó, pero su foto no. $explicacion',
       );
+      setState(() => _imagen = ImagenElegida.de(error.producto));
       widget.alGuardar(error.producto);
     } catch (error) {
       if (mounted) {
