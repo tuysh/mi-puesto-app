@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:mi_puesto/datos/error_del_servidor.dart';
 import 'package:mi_puesto/nucleo/widgets/indicador_de_carga.dart';
 import 'package:mi_puesto/nucleo/widgets/mensaje_de_error.dart';
 
@@ -30,7 +31,11 @@ class _EstadoDeCargador<Dato> extends State<CargadorDeFuturo<Dato>> {
   late Future<Dato> _carga = widget.cargar();
 
   void _reintentar() {
-    setState(() => _carga = widget.cargar());
+    // Con llaves a propósito: `setState(() => _carga = …)` devolvería el
+    // futuro, y Flutter no acepta que setState reciba uno.
+    setState(() {
+      _carga = widget.cargar();
+    });
   }
 
   @override
@@ -39,7 +44,15 @@ class _EstadoDeCargador<Dato> extends State<CargadorDeFuturo<Dato>> {
       future: _carga,
       builder: (context, resultado) {
         if (resultado.hasError) {
-          return MensajeDeError(alReintentar: _reintentar);
+          final error = resultado.error;
+          // Deja el error en la consola para quien esté programando.
+          debugPrint('No se pudo cargar: $error');
+
+          return MensajeDeError(
+            // Si el servidor explicó qué pasó, se muestra su explicación.
+            explicacion: error is ErrorDelServidor ? error.mensaje : null,
+            alReintentar: _reintentar,
+          );
         }
         if (resultado.connectionState != ConnectionState.done) {
           return const IndicadorDeCarga();

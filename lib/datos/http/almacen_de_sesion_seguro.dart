@@ -11,8 +11,18 @@ class AlmacenDeSesionSeguro implements AlmacenDeSesion {
 
   @override
   Future<SesionGuardada?> leer() async {
-    final token = await _almacenamiento.read(key: _llaveDelToken);
-    final puestoId = await _almacenamiento.read(key: _llaveDelPuesto);
+    final String? token;
+    final String? puestoId;
+    try {
+      token = await _almacenamiento.read(key: _llaveDelToken);
+      puestoId = await _almacenamiento.read(key: _llaveDelPuesto);
+    } catch (_) {
+      // Pasa, por ejemplo, al reinstalar la aplicación en Android: lo
+      // guardado ya no se puede descifrar. Se tira y se pide la cuenta
+      // otra vez, en lugar de dejar la aplicación trabada al abrir.
+      await _almacenamiento.deleteAll();
+      return null;
+    }
     if (token == null || puestoId == null) return null;
 
     return SesionGuardada(token: token, puestoId: puestoId);

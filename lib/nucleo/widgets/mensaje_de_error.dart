@@ -6,7 +6,15 @@ import 'package:mi_puesto/nucleo/widgets/boton_de_contorno.dart';
 /// Mensaje centrado para cuando los datos no se pudieron cargar, con un
 /// botón para intentarlo otra vez.
 class MensajeDeError extends StatelessWidget {
-  const MensajeDeError({super.key, required this.alReintentar});
+  const MensajeDeError({
+    super.key,
+    required this.alReintentar,
+    this.explicacion,
+  });
+
+  /// Qué salió mal, si se sabe ("No hay conexión con el servidor…"). Si es
+  /// `null` se muestra un texto general.
+  final String? explicacion;
 
   final VoidCallback alReintentar;
 
@@ -20,7 +28,7 @@ class MensajeDeError extends StatelessWidget {
           spacing: 16,
           children: [
             Text(
-              'No se pudo cargar la información',
+              explicacion ?? 'No se pudo cargar la información',
               textAlign: TextAlign.center,
               style: Tipografia.texto(17, color: Colores.tintaSuave),
             ),
