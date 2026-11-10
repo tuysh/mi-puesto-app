@@ -1,4 +1,5 @@
 import 'package:mi_puesto/datos/modelos/dinero.dart';
+import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/datos/modelos/reporte.dart';
 import 'package:mi_puesto/datos/modelos/resumen_del_dia.dart';
 import 'package:mi_puesto/datos/repositorios/repositorios.dart';
@@ -19,9 +20,9 @@ class RepositorioDeReportesSimulado implements RepositorioDeReportes {
       ganancia: const Dinero.pesos(610),
       numeroDeVentas: 23,
       masVendidos: [
-        ProductoVendido(producto: productosDeEjemplo[0], piezas: 9),
-        ProductoVendido(producto: productosDeEjemplo[5], piezas: 7),
-        ProductoVendido(producto: productosDeEjemplo[9], piezas: 5),
+        _vendido(productosDeEjemplo[0], piezas: 9),
+        _vendido(productosDeEjemplo[5], piezas: 7),
+        _vendido(productosDeEjemplo[9], piezas: 5),
       ],
       ventasPorVendedor: const [
         VentaPorVendedor(nombre: 'Mari', total: Dinero.pesos(820)),
@@ -114,5 +115,14 @@ TramoDeReporte _tramo(
     vendido: Dinero.pesos(vendidoEnPesos),
     ganancia: Dinero.pesos(gananciaEnPesos),
     esActual: esActual,
+  );
+}
+
+ProductoVendido _vendido(Producto producto, {required int piezas}) {
+  return ProductoVendido(
+    productoId: producto.id,
+    nombre: producto.nombre,
+    emoji: producto.emoji,
+    piezas: piezas,
   );
 }

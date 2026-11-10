@@ -11,6 +11,9 @@ import 'package:mi_puesto/nucleo/tema/colores.dart';
 
 const puestoDeEjemplo = Puesto(id: 'puesto-1', nombre: 'Puesto Doña Mari');
 
+/// La cuenta que ya existe al abrir la aplicación con datos simulados.
+const correoDeEjemplo = 'mari@ejemplo.com';
+const contrasenaDeEjemplo = 'pay-de-limon';
 const pinDeEjemplo = '1234';
 
 const vendedoresDeEjemplo = [

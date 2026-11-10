@@ -1,5 +1,4 @@
 import 'package:mi_puesto/datos/modelos/dinero.dart';
-import 'package:mi_puesto/datos/modelos/producto.dart';
 
 /// Los números del día que se muestran en la pantalla "Hoy".
 class ResumenDelDia {
@@ -25,9 +24,19 @@ class ResumenDelDia {
 
 /// Cuántas piezas se vendieron de un producto.
 class ProductoVendido {
-  const ProductoVendido({required this.producto, required this.piezas});
+  const ProductoVendido({
+    required this.productoId,
+    required this.nombre,
+    required this.emoji,
+    required this.piezas,
+  });
 
-  final Producto producto;
+  final String productoId;
+
+  /// El nombre con el que se vendió (puede haber cambiado después).
+  final String nombre;
+
+  final String emoji;
   final int piezas;
 }
 
