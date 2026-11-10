@@ -10,6 +10,8 @@ class Producto {
     required this.precio,
     required this.costo,
     required this.categoriaId,
+    this.letras = '',
+    this.fotoUrl = '',
     this.aLaVenta = true,
   });
 
@@ -21,6 +23,8 @@ class Producto {
       emoji = '🍽️',
       precio = Dinero.cero,
       costo = Dinero.cero,
+      letras = '',
+      fotoUrl = '',
       aLaVenta = true;
 
   /// Vacío mientras el producto no se haya guardado (ver [esNuevo]).
@@ -31,7 +35,16 @@ class Producto {
   /// Nombre abreviado que cabe en el botón del producto al vender.
   final String nombreCorto;
 
+  /// Un producto se ve en los botones de una de tres maneras: con su foto,
+  /// con un emoji o con letras. Se usa lo primero que tenga, en ese orden;
+  /// lo que no se usa queda vacío.
   final String emoji;
+
+  /// Hasta dos letras, para cuando ningún emoji se parece: "PL".
+  final String letras;
+
+  /// La dirección de la foto en internet; vacía si no tiene foto.
+  final String fotoUrl;
 
   /// Lo que paga el cliente.
   final Dinero precio;
@@ -55,6 +68,8 @@ class Producto {
     String? nombre,
     String? nombreCorto,
     String? emoji,
+    String? letras,
+    String? fotoUrl,
     Dinero? precio,
     Dinero? costo,
     String? categoriaId,
@@ -65,6 +80,8 @@ class Producto {
       nombre: nombre ?? this.nombre,
       nombreCorto: nombreCorto ?? this.nombreCorto,
       emoji: emoji ?? this.emoji,
+      letras: letras ?? this.letras,
+      fotoUrl: fotoUrl ?? this.fotoUrl,
       precio: precio ?? this.precio,
       costo: costo ?? this.costo,
       categoriaId: categoriaId ?? this.categoriaId,

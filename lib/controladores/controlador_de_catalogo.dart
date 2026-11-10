@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:mi_puesto/datos/modelos/categoria.dart';
+import 'package:mi_puesto/datos/modelos/foto_nueva.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/datos/repositorios/repositorios.dart';
 
@@ -103,18 +104,61 @@ class ControladorDeCatalogo extends ChangeNotifier {
   }
 
   /// Guarda un producto nuevo o los cambios de uno que ya existía.
-  Future<Producto> guardarProducto(Producto producto) async {
-    final guardado = await _repositorio.guardarProducto(producto);
+  ///
+  /// La foto se guarda aparte, después del producto:
+  /// - con [fotoNueva], se sube esa foto;
+  /// - si el producto tenía foto y [producto] ya no trae `fotoUrl`, se
+  ///   quita (la persona prefirió un emoji o letras).
+  ///
+  /// Si el producto se guarda pero su foto no, lanza [FotoSinGuardar].
+  Future<Producto> guardarProducto(
+    Producto producto, {
+    FotoNueva? fotoNueva,
+  }) async {
+    final teniaFoto = buscarProducto(producto.id)?.fotoUrl.isNotEmpty ?? false;
 
-    final posicion = _productos.indexWhere((p) => p.id == guardado.id);
-    final yaExistia = posicion != -1;
-    if (yaExistia) {
-      _productos[posicion] = guardado;
-    } else {
-      _productos.add(guardado);
+    var guardado = await _repositorio.guardarProducto(producto);
+    _ponerProducto(guardado);
+
+    try {
+      if (fotoNueva != null) {
+        guardado = await _repositorio.subirFotoDeProducto(
+          guardado.id,
+          fotoNueva,
+        );
+      } else if (teniaFoto && producto.fotoUrl.isEmpty) {
+        guardado = await _repositorio.quitarFotoDeProducto(guardado.id);
+      }
+    } catch (causa) {
+      // El producto sí quedó guardado; lo que falló fue su foto.
+      notifyListeners();
+      throw FotoSinGuardar(producto: guardado, causa: causa);
     }
 
+    _ponerProducto(guardado);
     notifyListeners();
     return guardado;
   }
+
+  /// Agrega [producto] a la lista o reemplaza al que tenía su mismo `id`.
+  void _ponerProducto(Producto producto) {
+    final posicion = _productos.indexWhere((p) => p.id == producto.id);
+    final yaExistia = posicion != -1;
+    if (yaExistia) {
+      _productos[posicion] = producto;
+    } else {
+      _productos.add(producto);
+    }
+  }
+}
+
+/// El producto se guardó bien, pero no se pudo subir (o quitar) su foto.
+class FotoSinGuardar implements Exception {
+  const FotoSinGuardar({required this.producto, required this.causa});
+
+  /// El producto tal como quedó guardado, todavía con la imagen anterior.
+  final Producto producto;
+
+  /// El error original, por si trae una explicación del servidor.
+  final Object causa;
 }

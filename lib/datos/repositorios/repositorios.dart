@@ -18,6 +18,7 @@ import 'package:mi_puesto/datos/modelos/caja.dart';
 import 'package:mi_puesto/datos/modelos/categoria.dart';
 import 'package:mi_puesto/datos/modelos/dinero.dart';
 import 'package:mi_puesto/datos/modelos/estado_de_acceso.dart';
+import 'package:mi_puesto/datos/modelos/foto_nueva.dart';
 import 'package:mi_puesto/datos/modelos/linea_de_pedido.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/datos/modelos/puesto.dart';
@@ -96,7 +97,18 @@ abstract interface class RepositorioDeCatalogo {
 
   /// Crea el producto si es nuevo o lo actualiza si ya existía.
   /// Devuelve el producto tal como quedó guardado (ya con `id`).
+  ///
+  /// Guarda el emoji y las letras, pero NO la foto: esa va aparte, con
+  /// [subirFotoDeProducto] y [quitarFotoDeProducto].
   Future<Producto> guardarProducto(Producto producto);
+
+  /// Sube la foto de un producto que ya existe (o reemplaza la que tenía).
+  /// Devuelve el producto con la dirección de la foto nueva.
+  Future<Producto> subirFotoDeProducto(String productoId, FotoNueva foto);
+
+  /// Le quita la foto a un producto; vuelve a verse con su emoji o sus
+  /// letras. Devuelve el producto ya sin foto.
+  Future<Producto> quitarFotoDeProducto(String productoId);
 }
 
 /// Registro de ventas.

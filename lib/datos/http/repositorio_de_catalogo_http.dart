@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:mi_puesto/datos/http/cliente_de_api.dart';
 import 'package:mi_puesto/datos/http/conversion_de_json.dart';
 import 'package:mi_puesto/datos/modelos/categoria.dart';
+import 'package:mi_puesto/datos/modelos/foto_nueva.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/datos/repositorios/repositorios.dart';
 
@@ -85,6 +86,7 @@ class RepositorioDeCatalogoHttp implements RepositorioDeCatalogo {
           ? ''
           : producto.nombreCorto,
       'emoji': producto.emoji,
+      'letras': producto.letras,
       'precio': dineroAJson(producto.precio),
       'costo': dineroAJson(producto.costo),
       'a_la_venta': producto.aLaVenta,
@@ -97,6 +99,29 @@ class RepositorioDeCatalogoHttp implements RepositorioDeCatalogo {
     return _productoDeJson(guardado);
   }
 
+  @override
+  Future<Producto> subirFotoDeProducto(
+    String productoId,
+    FotoNueva foto,
+  ) async {
+    final producto = await _api.subirArchivo(
+      '${await _api.rutaDelPuesto()}/productos/$productoId/foto',
+      campo: 'foto',
+      bytes: foto.bytes,
+      nombreDeArchivo: foto.nombreDeArchivo,
+    );
+    return _productoDeJson(producto);
+  }
+
+  @override
+  Future<Producto> quitarFotoDeProducto(String productoId) async {
+    final producto = await _api.pedir(
+      'DELETE',
+      '${await _api.rutaDelPuesto()}/productos/$productoId/foto',
+    );
+    return _productoDeJson(producto);
+  }
+
   Producto _productoDeJson(dynamic json) {
     final nombre = json['nombre'] as String;
     final nombreCorto = json['nombre_corto'] as String? ?? '';
@@ -106,6 +131,8 @@ class RepositorioDeCatalogoHttp implements RepositorioDeCatalogo {
       nombre: nombre,
       nombreCorto: nombreCorto.isEmpty ? nombre : nombreCorto,
       emoji: json['emoji'] as String? ?? '',
+      letras: json['letras'] as String? ?? '',
+      fotoUrl: _api.direccionDeFoto(json['foto_url'] as String? ?? ''),
       precio: dineroDeJson(json['precio']),
       costo: dineroDeJson(json['costo']),
       categoriaId: idDeJson(json['categoria_id']),

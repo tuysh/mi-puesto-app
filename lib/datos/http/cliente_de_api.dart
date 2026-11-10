@@ -78,24 +78,65 @@ class ClienteDeApi {
     bool conSesion = true,
     bool avisarSiSePierdeLaSesion = true,
   }) async {
-    final direccion = _base.replace(
-      path: '${_base.path.replaceFirst(RegExp(r'/$'), '')}/api/v1$ruta',
-      queryParameters: consulta,
-    );
-
-    final peticion = http.Request(metodo, direccion);
-    peticion.headers['Accept'] = 'application/json';
-    if (conSesion) {
-      final sesion = await leerSesion();
-      if (sesion == null) throw const _SesionCerrada();
-      peticion.headers['Authorization'] = 'Bearer ${sesion.token}';
-    }
+    final peticion = http.Request(metodo, _direccion(ruta, consulta));
     if (cuerpo != null) {
       peticion.headers['Content-Type'] = 'application/json';
       peticion.body = jsonEncode(cuerpo);
     } else if (metodo != 'GET' && metodo != 'DELETE') {
       // El servidor pide este encabezado en todo POST, aunque vaya vacío.
       peticion.headers['Content-Type'] = 'application/json';
+    }
+
+    return _enviar(
+      peticion,
+      conSesion: conSesion,
+      avisarSiSePierdeLaSesion: avisarSiSePierdeLaSesion,
+    );
+  }
+
+  /// Sube un archivo con `PUT` y devuelve el JSON de la respuesta.
+  ///
+  /// Es la única petición que no manda JSON: el archivo viaja como
+  /// "formulario con archivos" (multipart), en el campo [campo].
+  Future<dynamic> subirArchivo(
+    String ruta, {
+    required String campo,
+    required List<int> bytes,
+    required String nombreDeArchivo,
+  }) {
+    final peticion = http.MultipartRequest('PUT', _direccion(ruta, null));
+    peticion.files.add(
+      http.MultipartFile.fromBytes(campo, bytes, filename: nombreDeArchivo),
+    );
+
+    return _enviar(peticion, conSesion: true, avisarSiSePierdeLaSesion: true);
+  }
+
+  /// Convierte la dirección de una foto en una dirección completa. En
+  /// desarrollo el servidor la manda sin su inicio (`/media/…`).
+  String direccionDeFoto(String fotoUrl) {
+    if (!fotoUrl.startsWith('/')) return fotoUrl;
+    return _base.replace(path: fotoUrl).toString();
+  }
+
+  Uri _direccion(String ruta, Map<String, String>? consulta) {
+    return _base.replace(
+      path: '${_base.path.replaceFirst(RegExp(r'/$'), '')}/api/v1$ruta',
+      queryParameters: consulta,
+    );
+  }
+
+  /// Manda la petición ya armada, le pone el token y revisa la respuesta.
+  Future<dynamic> _enviar(
+    http.BaseRequest peticion, {
+    required bool conSesion,
+    required bool avisarSiSePierdeLaSesion,
+  }) async {
+    peticion.headers['Accept'] = 'application/json';
+    if (conSesion) {
+      final sesion = await leerSesion();
+      if (sesion == null) throw const _SesionCerrada();
+      peticion.headers['Authorization'] = 'Bearer ${sesion.token}';
     }
 
     final http.Response respuesta;
