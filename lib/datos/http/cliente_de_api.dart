@@ -109,7 +109,13 @@ class ClienteDeApi {
       http.MultipartFile.fromBytes(campo, bytes, filename: nombreDeArchivo),
     );
 
-    return _enviar(peticion, conSesion: true, avisarSiSePierdeLaSesion: true);
+    return _enviar(
+      peticion,
+      conSesion: true,
+      avisarSiSePierdeLaSesion: true,
+      // Una foto pesa mucho más que el resto de lo que se manda.
+      esperaMaxima: const Duration(seconds: 60),
+    );
   }
 
   /// Convierte la dirección de una foto en una dirección completa. En
@@ -131,6 +137,7 @@ class ClienteDeApi {
     http.BaseRequest peticion, {
     required bool conSesion,
     required bool avisarSiSePierdeLaSesion,
+    Duration esperaMaxima = _esperaMaxima,
   }) async {
     peticion.headers['Accept'] = 'application/json';
     if (conSesion) {
@@ -144,7 +151,7 @@ class ClienteDeApi {
       respuesta = await _http
           .send(peticion)
           .then(http.Response.fromStream)
-          .timeout(_esperaMaxima);
+          .timeout(esperaMaxima);
     } catch (_) {
       // Sin señal, servidor apagado, respuesta que nunca llegó…
       throw const ErrorDeConexion();

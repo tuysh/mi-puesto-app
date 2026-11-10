@@ -66,7 +66,11 @@ class VisualDeProducto extends StatelessWidget {
       excludeFromSemantics: true,
       // Sin internet (o si la foto ya no existe) se ve el emoji o las
       // letras, en vez de un hueco.
-      errorBuilder: (context, error, pila) => _emojiOLetras(),
+      errorBuilder: (context, error, pila) {
+        // Deja el motivo en la consola para quien esté programando.
+        debugPrint('No se pudo mostrar la foto $fotoUrl: $error');
+        return _emojiOLetras();
+      },
     );
   }
 
