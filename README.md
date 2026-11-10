@@ -53,8 +53,9 @@ Reglas que sigue el código:
   repositorio o un controlador.
 - Casi sin paquetes externos: el estado se maneja con `ChangeNotifier` y
   `ListenableBuilder`, que ya vienen con Flutter. Los únicos paquetes son
-  `http` (hablar con el servidor) y `flutter_secure_storage` (guardar la
-  sesión cifrada en el dispositivo).
+  `http` (hablar con el servidor), `flutter_secure_storage` (guardar la
+  sesión cifrada en el dispositivo) e `image_picker` (tomar o elegir la
+  foto de un producto).
 
 ## Cómo habla con el servidor
 
@@ -80,6 +81,11 @@ Cosas que conviene saber:
 - **Ventas.** Cada venta lleva un identificador único; si se queda sin
   respuesta por mala señal y se reintenta el mismo pedido, se reúsa para
   que no se registre doble.
+- **Imagen del producto.** Un producto se ve con foto, emoji o letras
+  (se elige en la hoja "¿Cómo se ve al vender?"). El emoji y las letras
+  se guardan con el producto; la foto se sube aparte, después de
+  guardarlo, y el servidor la reduce y la guarda. Si la foto no carga
+  (sin internet), se ve el emoji o las letras.
 - **Caja.** El servidor permite vender sin caja abierta, pero esas ventas
   no entran en la cuenta. Por eso "Cerrar caja" ofrece abrirla cuando no
   hay ninguna.
