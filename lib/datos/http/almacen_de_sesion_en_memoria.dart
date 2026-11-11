@@ -1,18 +1,18 @@
 import 'package:mi_puesto/datos/http/almacen_de_sesion.dart';
 
-/// Recuerda la sesión solo mientras la aplicación está abierta.
+/// Recuerda el token solo mientras la aplicación está abierta.
 /// Se usa en las pruebas, donde no hay almacenamiento del dispositivo.
 class AlmacenDeSesionEnMemoria implements AlmacenDeSesion {
-  AlmacenDeSesionEnMemoria([this._sesion]);
+  AlmacenDeSesionEnMemoria([this._token]);
 
-  SesionGuardada? _sesion;
-
-  @override
-  Future<SesionGuardada?> leer() async => _sesion;
+  String? _token;
 
   @override
-  Future<void> guardar(SesionGuardada sesion) async => _sesion = sesion;
+  Future<String?> leerToken() async => _token;
 
   @override
-  Future<void> borrar() async => _sesion = null;
+  Future<void> guardarToken(String token) async => _token = token;
+
+  @override
+  Future<void> borrarToken() async => _token = null;
 }

@@ -8,19 +8,22 @@ import 'package:mi_puesto/nucleo/tema/tipografia.dart';
 import 'package:mi_puesto/nucleo/widgets/boton_de_contorno.dart';
 import 'package:mi_puesto/nucleo/widgets/cifra.dart';
 
-/// El aviso verde que confirma una venta: cuánto pagó el cliente y, en
-/// grande, el cambio que hay que darle. Incluye el botón para corregir.
+/// El aviso verde que confirma una venta: cómo pagó el cliente y, en
+/// grande, el cambio que hay que darle (o el total, si pagó con tarjeta).
 class AvisoDeVentaRegistrada extends StatelessWidget {
   const AvisoDeVentaRegistrada({
     super.key,
     required this.venta,
     required this.alCerrar,
-    required this.alCorregir,
+    required this.alVerOCorregir,
   });
 
   final Venta venta;
   final VoidCallback alCerrar;
-  final VoidCallback alCorregir;
+
+  /// Abre el detalle de la venta. Si es `null` no se dibuja el botón:
+  /// quien solo vende no puede corregir.
+  final VoidCallback? alVerOCorregir;
 
   static const _verde = Colores.exito;
 
@@ -50,31 +53,37 @@ class AvisoDeVentaRegistrada extends StatelessWidget {
               ),
             ],
           ),
-          BotonDeContorno(
-            texto: 'Me equivoqué: corregir pedido',
-            alTocar: alCorregir,
-            alto: 44,
-            tamanoDeTexto: 15,
-            color: _verde.tinta,
-            fondo: const Color(0x99FFFFFF),
-          ),
+          if (alVerOCorregir != null)
+            BotonDeContorno(
+              texto: 'Ver o corregir esta venta',
+              alTocar: alVerOCorregir,
+              alto: 44,
+              tamanoDeTexto: 15,
+              color: _verde.tinta,
+              fondo: const Color(0x99FFFFFF),
+            ),
         ],
       ),
     );
   }
 
   Widget _construirTextos() {
-    final pago = formatearDinero(venta.pagoCon);
+    final cambio = venta.cambio;
+    final montoRecibido = venta.montoRecibido;
+    final fueConTarjeta = cambio == null || montoRecibido == null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: 2,
       children: [
         Text(
-          'Venta registrada · pagó $pago',
+          fueConTarjeta
+              ? 'Venta registrada · tarjeta'
+              : 'Venta registrada · efectivo, pagó '
+                    '${formatearDinero(montoRecibido)}',
           style: Tipografia.texto(15, peso: 800, color: _verde.tinta),
         ),
-        // FittedBox encoge el renglón si el cambio es tan grande que no cabe.
+        // FittedBox encoge el renglón si el monto es tan grande que no cabe.
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
@@ -85,11 +94,12 @@ class AvisoDeVentaRegistrada extends StatelessWidget {
             spacing: 8,
             children: [
               Text(
-                'Cambio',
+                // Con tarjeta no hay cambio: se muestra lo cobrado.
+                fueConTarjeta ? 'Cobrado' : 'Cambio',
                 style: Tipografia.texto(17, peso: 800, color: _verde.tinta),
               ),
               Cifra(
-                formatearDinero(venta.cambio),
+                formatearDinero(fueConTarjeta ? venta.total : cambio),
                 tamano: 40,
                 peso: 750,
                 color: _verde.tinta,

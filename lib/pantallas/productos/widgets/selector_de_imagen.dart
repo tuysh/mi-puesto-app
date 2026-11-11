@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mi_puesto/app/dependencias.dart';
 import 'package:mi_puesto/datos/modelos/foto_nueva.dart';
+import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/nucleo/navegacion.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
@@ -59,8 +60,14 @@ class _EstadoDeSelectorDeImagen extends State<SelectorDeImagen> {
   _Modo _modoInicial() {
     final actual = widget.imagenActual;
     if (actual.tieneFoto) return _Modo.foto;
-    if (actual.emoji.isEmpty && actual.letras.isNotEmpty) return _Modo.letras;
-    return _Modo.emoji;
+    // Un producto nuevo todavía no tiene nada: se le ofrece primero el
+    // emoji, que es lo más común.
+    if (actual.emoji.isEmpty && actual.letras.isEmpty) return _Modo.emoji;
+
+    return switch (actual.representacion) {
+      Representacion.letras => _Modo.letras,
+      _ => _Modo.emoji,
+    };
   }
 
   bool get _hayFoto =>

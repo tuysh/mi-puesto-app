@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
-import 'package:mi_puesto/nucleo/tema/medidas.dart';
+import 'package:mi_puesto/nucleo/widgets/hoja_inferior.dart';
 import 'package:mi_puesto/pantallas/productos/imagen_elegida.dart';
 import 'package:mi_puesto/pantallas/productos/widgets/selector_de_imagen.dart';
 
@@ -15,43 +15,12 @@ Future<ImagenElegida?> elegirImagen(
   required String nombreDelProducto,
   required ParDeColores colores,
 }) {
-  final selector = SelectorDeImagen(
-    imagenActual: imagenActual,
-    nombreDelProducto: nombreDelProducto,
-    colores: colores,
-  );
-
-  if (esTablet(context)) {
-    return showDialog<ImagenElegida>(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colores.superficie,
-        child: SizedBox(
-          width: 420,
-          child: Padding(padding: const EdgeInsets.all(22), child: selector),
-        ),
-      ),
-    );
-  }
-
-  return showModalBottomSheet<ImagenElegida>(
-    context: context,
-    backgroundColor: Colores.superficie,
-    showDragHandle: true,
-    // Permite que la hoja sea tan alta como su contenido.
-    isScrollControlled: true,
-    builder: (context) => SafeArea(
-      child: Padding(
-        // Cuando sale el teclado (para escribir las letras), la hoja sube
-        // para que no la tape.
-        padding: EdgeInsets.fromLTRB(
-          18,
-          0,
-          18,
-          18 + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: selector,
-      ),
+  return mostrarHoja<ImagenElegida>(
+    context,
+    contenido: SelectorDeImagen(
+      imagenActual: imagenActual,
+      nombreDelProducto: nombreDelProducto,
+      colores: colores,
     ),
   );
 }

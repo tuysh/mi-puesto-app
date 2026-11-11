@@ -1,12 +1,13 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/nucleo/tema/medidas.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
 import 'package:mi_puesto/nucleo/widgets/cifra.dart';
 
-/// Tarjeta pequeña con un dato: una etiqueta y, debajo, su valor en grande.
+/// Tarjeta chica con un solo número y su nombre arriba: "Gastos $420".
 ///
-/// Sin [colores] es blanca con borde; con [colores] se pinta de ese color.
+/// Sin [colores] es blanca con borde. Con [colores] se pinta de ese color
+/// (verde para la utilidad, por ejemplo).
 class TarjetaDeDato extends StatelessWidget {
   const TarjetaDeDato({
     super.key,
@@ -16,23 +17,25 @@ class TarjetaDeDato extends StatelessWidget {
   });
 
   final String etiqueta;
+
+  /// El número ya convertido a texto, por ejemplo `$420`.
   final String valor;
+
   final ParDeColores? colores;
 
   @override
   Widget build(BuildContext context) {
     final colores = this.colores;
-    final esBlanca = colores == null;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: esBlanca ? Colores.superficie : colores.fondo,
+        color: colores?.fondo ?? Colores.superficie,
         borderRadius: BorderRadius.circular(Radios.tarjeta),
+        // El borde transparente ocupa el mismo sitio que el visible: así
+        // las dos variantes miden igual una junto a la otra.
         border: Border.all(
-          // La tarjeta de color lleva un borde de su mismo color para medir
-          // exactamente lo mismo que la blanca.
-          color: esBlanca ? Colores.borde : colores.fondo,
+          color: colores == null ? Colores.borde : const Color(0x00000000),
           width: 2,
         ),
       ),
@@ -45,14 +48,19 @@ class TarjetaDeDato extends StatelessWidget {
             style: Tipografia.texto(
               14,
               peso: 800,
-              color: esBlanca ? Colores.tintaSuave : colores.tinta,
+              color: colores?.tinta ?? Colores.tintaSuave,
             ),
           ),
-          Cifra(
-            valor,
-            tamano: 32,
-            peso: 750,
-            color: esBlanca ? Colores.tinta : colores.tinta,
+          // FittedBox encoge el número si no cabe en media pantalla.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Cifra(
+              valor,
+              tamano: 30,
+              peso: 750,
+              color: colores?.tinta ?? Colores.tinta,
+            ),
           ),
         ],
       ),

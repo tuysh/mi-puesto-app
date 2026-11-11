@@ -25,9 +25,18 @@ class TarjetaDeSeccion extends StatelessWidget {
         spacing: 10,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            spacing: 8,
             children: [
-              Text(titulo, style: Tipografia.titulo(19, peso: 700)),
+              // El título ocupa lo que deja libre lo de la derecha. Si en
+              // una pantalla angosta no cabe, FittedBox lo encoge en vez
+              // de que el renglón se desborde.
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(titulo, style: Tipografia.titulo(19, peso: 700)),
+                ),
+              ),
               ?alLadoDelTitulo,
             ],
           ),

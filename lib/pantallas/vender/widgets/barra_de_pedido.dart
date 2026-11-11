@@ -10,7 +10,7 @@ import 'package:mi_puesto/nucleo/widgets/caja_tocable.dart';
 import 'package:mi_puesto/nucleo/widgets/cifra.dart';
 import 'package:mi_puesto/pantallas/cobrar/pantalla_cobrar.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/boton_de_cobrar.dart';
-import 'package:mi_puesto/pantallas/vender/widgets/hoja_de_pedido.dart';
+import 'package:mi_puesto/pantallas/vender/pantalla_de_pedido.dart';
 
 /// En teléfono: la barra con el resumen del pedido (piezas y total) y el
 /// botón "Cobrar". No se dibuja mientras el pedido está vacío.
@@ -45,11 +45,12 @@ class BarraDePedido extends StatelessWidget {
                 child: _ResumenTocable(
                   textoDePiezas: '$piezas $palabra · ver',
                   total: formatearDinero(pedido.total),
-                  alTocar: () => mostrarHojaDePedido(context),
+                  alTocar: () =>
+                      abrirPantalla(context, const PantallaDePedido()),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(5),
+                padding: const EdgeInsets.all(7),
                 child: BotonDeCobrar(
                   alTocar: () => abrirPantalla(context, const PantallaCobrar()),
                 ),
@@ -62,7 +63,7 @@ class BarraDePedido extends StatelessWidget {
   }
 }
 
-/// La mitad izquierda de la barra. Al tocarla se abre el detalle del pedido.
+/// La mitad izquierda de la barra. Al tocarla se abre la pantalla "Pedido".
 class _ResumenTocable extends StatelessWidget {
   const _ResumenTocable({
     required this.textoDePiezas,

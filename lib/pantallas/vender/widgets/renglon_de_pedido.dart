@@ -1,50 +1,53 @@
 import 'package:flutter/material.dart';
-import 'package:mi_puesto/datos/modelos/linea_de_pedido.dart';
-import 'package:mi_puesto/datos/modelos/producto.dart';
-import 'package:mi_puesto/nucleo/formato/formato_dinero.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
-import 'package:mi_puesto/nucleo/widgets/cifra.dart';
-import 'package:mi_puesto/nucleo/widgets/imagen_de_producto.dart';
-import 'package:mi_puesto/pantallas/vender/widgets/boton_de_cantidad.dart';
+import 'package:mi_puesto/pantallas/vender/widgets/control_de_cantidad.dart';
 
-/// Un renglón del pedido: el producto, su subtotal y los botones para
-/// quitar o agregar piezas. Lleva una raya debajo, como hoja de libreta.
+/// Un renglón de pedido: la imagen del producto, su nombre, un detalle
+/// ("Grande · $25 c/u") y los botones para quitar o agregar piezas.
+///
+/// No sabe de dónde salen los datos: lo usan el pedido que se está armando
+/// y la pantalla de editar una venta ya hecha.
 class RenglonDePedido extends StatelessWidget {
   const RenglonDePedido({
     super.key,
-    required this.linea,
-    required this.productoActual,
-    required this.colores,
+    required this.imagen,
+    required this.nombre,
+    required this.detalle,
+    required this.cantidad,
+    required this.nombreParaLeer,
     required this.alQuitar,
     required this.alAgregar,
+    this.alto = 68,
   });
 
-  final LineaDePedido linea;
+  /// El cuadrito con la foto, el emoji o las letras del producto. Puede
+  /// ser `null` si no se sabe cómo se ve (el producto ya no existe).
+  final Widget? imagen;
 
-  /// El producto como está AHORA en el catálogo. El pedido guarda el
-  /// producto como era al agregarlo; si después le cambiaron la foto, esa
-  /// copia trae una dirección que ya no existe.
-  final Producto productoActual;
+  final String nombre;
 
-  /// Los colores de la categoría del producto.
-  final ParDeColores colores;
+  /// El tamaño (si tiene) y el precio por pieza: "Grande · $25 c/u".
+  final String detalle;
+
+  final int cantidad;
+
+  /// El nombre con su tamaño, para los lectores de pantalla.
+  final String nombreParaLeer;
+
   final VoidCallback alQuitar;
   final VoidCallback alAgregar;
 
+  final double alto;
+
   @override
   Widget build(BuildContext context) {
-    final nombre = linea.producto.nombreCorto;
-
-    return Container(
-      height: 57,
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colores.borde, width: 2)),
-      ),
+    return SizedBox(
+      height: alto,
       child: Row(
         spacing: 10,
         children: [
-          ImagenDeProducto.de(productoActual, colores: colores, tamano: 38),
+          ?imagen,
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -57,32 +60,24 @@ class RenglonDePedido extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: Tipografia.texto(16, peso: 800, altura: 1.15),
                 ),
-                Cifra(
-                  formatearDinero(linea.subtotal),
-                  tamano: 15,
-                  peso: 600,
-                  color: Colores.tintaSuave,
+                Text(
+                  detalle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Tipografia.texto(
+                    14,
+                    color: Colores.tintaSuave,
+                    altura: 1.15,
+                  ),
                 ),
               ],
             ),
           ),
-          BotonDeCantidad(
-            icono: Icons.remove_rounded,
-            etiqueta: 'Quitar un $nombre',
-            alTocar: alQuitar,
-          ),
-          ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 20),
-            child: Center(
-              widthFactor: 1,
-              child: Cifra('${linea.cantidad}', tamano: 20),
-            ),
-          ),
-          BotonDeCantidad(
-            icono: Icons.add_rounded,
-            etiqueta: 'Agregar un $nombre',
-            esDeSumar: true,
-            alTocar: alAgregar,
+          ControlDeCantidad(
+            cantidad: cantidad,
+            nombre: nombreParaLeer,
+            alQuitar: alQuitar,
+            alAgregar: alAgregar,
           ),
         ],
       ),

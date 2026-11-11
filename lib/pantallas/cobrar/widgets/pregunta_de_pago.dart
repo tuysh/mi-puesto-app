@@ -26,7 +26,7 @@ class PreguntaDePago extends StatelessWidget {
               hayBilleteElegido
                   ? 'Pagó con:'
                   : '¿Pagó con más? Toca con cuánto',
-              style: Tipografia.texto(17, peso: 800),
+              style: Tipografia.texto(15, peso: 800),
             ),
           ),
           if (hayBilleteElegido)

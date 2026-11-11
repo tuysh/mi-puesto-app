@@ -5,11 +5,10 @@ import 'package:mi_puesto/pantallas/vender/widgets/aviso_de_ultima_venta.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/barra_de_pedido.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/cuadricula_de_productos.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/encabezado_de_vender.dart';
-import 'package:mi_puesto/pantallas/vender/widgets/filtro_de_categorias.dart';
-import 'package:mi_puesto/pantallas/vender/widgets/pista_de_pedido_vacio.dart';
+import 'package:mi_puesto/nucleo/widgets/filtro_de_categorias.dart';
 
 /// "Vender" en teléfono: de arriba a abajo, el encabezado, el filtro, los
-/// productos en tres columnas y, al fondo, el resumen del pedido.
+/// productos en dos columnas y, al fondo, el resumen del pedido.
 class VistaVenderTelefono extends StatelessWidget {
   const VistaVenderTelefono({
     super.key,
@@ -45,10 +44,6 @@ class VistaVenderTelefono extends StatelessWidget {
             margenLateral: 18,
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 18),
-          child: PistaDePedidoVacio(),
-        ),
         Expanded(
           // Stack encima: el aviso de venta FLOTA sobre los productos, que
           // se siguen viendo alrededor y por debajo de él.
@@ -56,7 +51,6 @@ class VistaVenderTelefono extends StatelessWidget {
             children: [
               CuadriculaDeProductos(
                 productos: productos,
-                rejilla: rejillaDeTelefono,
                 alTocarProducto: alTocarProducto,
                 relleno: const EdgeInsets.fromLTRB(18, 10, 18, 16),
               ),

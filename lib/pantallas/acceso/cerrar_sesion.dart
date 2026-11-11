@@ -9,7 +9,7 @@ import 'package:mi_puesto/pantallas/acceso/pantalla_de_iniciar_sesion.dart';
 /// sí, cierra la sesión y vuelve a "Inicia sesión".
 ///
 /// Se pregunta antes porque para volver a entrar hace falta la contraseña,
-/// y quien vende normalmente solo conoce el PIN.
+/// y quien vende normalmente solo conoce su PIN.
 Future<void> cerrarSesion(BuildContext context) async {
   final dependencias = Dependencias.de(context);
 
@@ -39,6 +39,7 @@ Future<void> cerrarSesion(BuildContext context) async {
   // Lo que quedó a medias era de la cuenta que acaba de salir.
   dependencias.pedido.vaciar();
   dependencias.ventas.cerrarAviso();
+  dependencias.caja.olvidar();
 
   if (!context.mounted) return;
   reemplazarTodasLasPantallas(context, const PantallaDeIniciarSesion());

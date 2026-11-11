@@ -1,13 +1,17 @@
 import 'dart:typed_data';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
+import 'package:mi_puesto/datos/modelos/resumen.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/nucleo/widgets/visual_de_producto.dart';
 
 /// Cuadrito redondeado con la foto, el emoji o las letras de un producto,
 /// sobre el color de su categoría.
 class ImagenDeProducto extends StatelessWidget {
+  /// Dibuja lo primero que se le dé, en este orden: [fotoLocal], [fotoUrl],
+  /// [emoji], [letras]. Para pintar un producto guardado es más fácil
+  /// [ImagenDeProducto.de].
   const ImagenDeProducto({
     super.key,
     required this.nombre,
@@ -17,6 +21,7 @@ class ImagenDeProducto extends StatelessWidget {
     this.fotoUrl = '',
     this.fotoLocal,
     this.tamano = 42,
+    this.radio,
   });
 
   /// La imagen de [producto], tal como está guardado.
@@ -25,10 +30,24 @@ class ImagenDeProducto extends StatelessWidget {
     super.key,
     required this.colores,
     this.tamano = 42,
+    this.radio,
   }) : nombre = producto.nombre,
-       emoji = producto.emoji,
+       emoji = _emojiQueSePinta(producto.representacion, producto.emoji),
        letras = producto.letras,
-       fotoUrl = producto.fotoUrl,
+       fotoUrl = _fotoQueSePinta(producto.representacion, producto.imagenUrl),
+       fotoLocal = null;
+
+  /// La imagen de un producto de "Lo más vendido".
+  ImagenDeProducto.deVendido(
+    ProductoVendido vendido, {
+    super.key,
+    required this.colores,
+    this.tamano = 42,
+    this.radio,
+  }) : nombre = vendido.nombreDelProducto,
+       emoji = _emojiQueSePinta(vendido.representacion, vendido.emoji),
+       letras = vendido.letras,
+       fotoUrl = _fotoQueSePinta(vendido.representacion, vendido.imagenUrl),
        fotoLocal = null;
 
   final String nombre;
@@ -47,10 +66,25 @@ class ImagenDeProducto extends StatelessWidget {
   /// Lado del cuadro.
   final double tamano;
 
+  /// Radio de las esquinas. Si es `null`, un tercio del lado.
+  final double? radio;
+
+  /// El servidor dice con qué se pinta el producto ([representacion]); lo
+  /// demás puede venir lleno, pero no se usa. Si se pinta con letras, el
+  /// emoji se ignora. Si se pinta con foto, el emoji se deja pasar: es lo
+  /// que se ve cuando la foto no carga.
+  static String _emojiQueSePinta(Representacion representacion, String emoji) {
+    return representacion == Representacion.letras ? '' : emoji;
+  }
+
+  static String _fotoQueSePinta(Representacion representacion, String url) {
+    return representacion == Representacion.imagen ? url : '';
+  }
+
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(tamano / 3),
+      borderRadius: BorderRadius.circular(radio ?? tamano / 3),
       child: Container(
         width: tamano,
         height: tamano,

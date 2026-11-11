@@ -5,7 +5,7 @@ import 'package:mi_puesto/nucleo/widgets/encabezado_de_pantalla.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/aviso_de_ultima_venta.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/buscador_de_productos.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/cuadricula_de_productos.dart';
-import 'package:mi_puesto/pantallas/vender/widgets/filtro_de_categorias.dart';
+import 'package:mi_puesto/nucleo/widgets/filtro_de_categorias.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/panel_de_pedido.dart';
 
 /// "Vender" en tablet: los productos a la izquierda y, siempre visible a la
@@ -72,7 +72,7 @@ class VistaVenderTablet extends StatelessWidget {
               children: [
                 CuadriculaDeProductos(
                   productos: productos,
-                  rejilla: rejillaDeTablet,
+                  esDeTablet: true,
                   alTocarProducto: alTocarProducto,
                   relleno: const EdgeInsets.fromLTRB(0, 8, 8, 16),
                 ),

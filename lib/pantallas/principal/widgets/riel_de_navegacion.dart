@@ -1,17 +1,23 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/nucleo/widgets/logo_del_puesto.dart';
 import 'package:mi_puesto/pantallas/principal/destino.dart';
 import 'package:mi_puesto/pantallas/principal/widgets/boton_de_destino.dart';
-import 'package:mi_puesto/pantallas/principal/widgets/boton_de_vendedor_actual.dart';
+import 'package:mi_puesto/pantallas/principal/widgets/boton_de_persona_actual.dart';
 
-/// El menú de tablet: una columna angosta pegada a la izquierda.
+/// El menú de tablet: una columna angosta pegada a la izquierda, con las
+/// mismas secciones que la barra del teléfono y, al fondo, quién está
+/// dentro.
 class RielDeNavegacion extends StatelessWidget {
   const RielDeNavegacion({
     super.key,
+    required this.destinos,
     required this.destinoActual,
     required this.alElegir,
   });
+
+  /// Las secciones que puede ver quien está dentro.
+  final List<Destino> destinos;
 
   final Destino destinoActual;
   final ValueChanged<Destino> alElegir;
@@ -28,9 +34,9 @@ class RielDeNavegacion extends StatelessWidget {
       child: Column(
         spacing: 6,
         children: [
-          const LogoDelPuesto(tamano: 56),
+          const LogoDelPuesto(tamano: 56, altoDeSombra: 3),
           const SizedBox(height: 4),
-          for (final destino in destinosDeTablet)
+          for (final destino in destinos)
             BotonDeDestino(
               destino: destino,
               estaElegido: destino == destinoActual,
@@ -40,7 +46,7 @@ class RielDeNavegacion extends StatelessWidget {
               tamanoDeIcono: 26,
             ),
           const Spacer(),
-          const BotonDeVendedorActual(),
+          const BotonDePersonaActual(),
         ],
       ),
     );

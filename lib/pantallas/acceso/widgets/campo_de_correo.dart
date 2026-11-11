@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
 import 'package:mi_puesto/nucleo/widgets/campo_etiquetado.dart';
-import 'package:mi_puesto/pantallas/acceso/widgets/decoracion_de_campo_de_cuenta.dart';
+import 'package:mi_puesto/nucleo/widgets/decoracion_de_campo_alto.dart';
 
 /// El campo "Correo" de las pantallas de cuenta.
 class CampoDeCorreo extends StatelessWidget {
@@ -25,7 +25,7 @@ class CampoDeCorreo extends StatelessWidget {
         autocorrect: false,
         enableSuggestions: false,
         style: Tipografia.texto(17, peso: 600),
-        decoration: decoracionDeCampoDeCuenta(sugerencia: sugerencia),
+        decoration: decoracionDeCampoAlto(sugerencia: sugerencia),
       ),
     );
   }

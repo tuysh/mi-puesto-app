@@ -3,7 +3,7 @@ import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
 import 'package:mi_puesto/nucleo/widgets/boton_de_enlace.dart';
 import 'package:mi_puesto/nucleo/widgets/campo_etiquetado.dart';
-import 'package:mi_puesto/pantallas/acceso/widgets/decoracion_de_campo_de_cuenta.dart';
+import 'package:mi_puesto/nucleo/widgets/decoracion_de_campo_alto.dart';
 
 /// El campo "Contraseña": lo escrito se ve como puntitos hasta que se toca
 /// "Mostrar".
@@ -59,7 +59,7 @@ class _EstadoDeCampoDeContrasena extends State<CampoDeContrasena> {
             autocorrect: false,
             enableSuggestions: false,
             style: Tipografia.texto(17, peso: 600),
-            decoration: decoracionDeCampoDeCuenta(
+            decoration: decoracionDeCampoAlto(
               alFinal: Padding(
                 padding: const EdgeInsets.only(left: 4, right: 10),
                 child: BotonDeEnlace(

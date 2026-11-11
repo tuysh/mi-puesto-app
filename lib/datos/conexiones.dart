@@ -4,17 +4,22 @@ import 'package:mi_puesto/datos/http/almacen_de_sesion_seguro.dart';
 import 'package:mi_puesto/datos/http/cliente_de_api.dart';
 import 'package:mi_puesto/datos/http/repositorio_de_caja_http.dart';
 import 'package:mi_puesto/datos/http/repositorio_de_catalogo_http.dart';
-import 'package:mi_puesto/datos/http/repositorio_de_reportes_http.dart';
+import 'package:mi_puesto/datos/http/repositorio_de_categorias_http.dart';
+import 'package:mi_puesto/datos/http/repositorio_de_gastos_http.dart';
+import 'package:mi_puesto/datos/http/repositorio_de_perfiles_http.dart';
+import 'package:mi_puesto/datos/http/repositorio_de_resumen_http.dart';
 import 'package:mi_puesto/datos/http/repositorio_de_sesion_http.dart';
-import 'package:mi_puesto/datos/http/repositorio_de_vendedores_http.dart';
 import 'package:mi_puesto/datos/http/repositorio_de_ventas_http.dart';
 import 'package:mi_puesto/datos/repositorios/repositorios.dart';
 import 'package:mi_puesto/datos/simulados/repositorio_de_caja_simulado.dart';
 import 'package:mi_puesto/datos/simulados/repositorio_de_catalogo_simulado.dart';
-import 'package:mi_puesto/datos/simulados/repositorio_de_reportes_simulado.dart';
+import 'package:mi_puesto/datos/simulados/repositorio_de_categorias_simulado.dart';
+import 'package:mi_puesto/datos/simulados/repositorio_de_gastos_simulado.dart';
+import 'package:mi_puesto/datos/simulados/repositorio_de_perfiles_simulado.dart';
+import 'package:mi_puesto/datos/simulados/repositorio_de_resumen_simulado.dart';
 import 'package:mi_puesto/datos/simulados/repositorio_de_sesion_simulado.dart';
-import 'package:mi_puesto/datos/simulados/repositorio_de_vendedores_simulado.dart';
 import 'package:mi_puesto/datos/simulados/repositorio_de_ventas_simulado.dart';
+import 'package:mi_puesto/datos/simulados/servidor_simulado.dart';
 
 /// Todas las conexiones con el backend, juntas.
 ///
@@ -24,14 +29,17 @@ import 'package:mi_puesto/datos/simulados/repositorio_de_ventas_simulado.dart';
 class Conexiones {
   const Conexiones({
     required this.sesion,
-    required this.vendedores,
+    required this.perfiles,
     required this.catalogo,
+    required this.categoriasDeProductos,
+    required this.categoriasDeGastos,
     required this.ventas,
-    required this.reportes,
     required this.caja,
+    required this.gastos,
+    required this.resumen,
   });
 
-  /// Conexiones de verdad: todo se pide a la API v1 del servidor que está
+  /// Conexiones de verdad: todo se pide a la API v2 del servidor que está
   /// en [urlDelServidor] (por ejemplo `https://mi-puesto-back.lunita.me`).
   ///
   /// [almacen] y [cliente] solo se indican en las pruebas, para no tocar
@@ -49,32 +57,53 @@ class Conexiones {
 
     return Conexiones(
       sesion: RepositorioDeSesionHttp(api),
-      vendedores: RepositorioDeVendedoresHttp(api),
+      perfiles: RepositorioDePerfilesHttp(api),
       catalogo: RepositorioDeCatalogoHttp(api),
+      categoriasDeProductos: RepositorioDeCategoriasHttp.deProductos(api),
+      categoriasDeGastos: RepositorioDeCategoriasHttp.deGastos(api),
       ventas: RepositorioDeVentasHttp(api),
-      reportes: RepositorioDeReportesHttp(api),
       caja: RepositorioDeCajaHttp(api),
+      gastos: RepositorioDeGastosHttp(api),
+      resumen: RepositorioDeResumenHttp(api),
     );
   }
 
   /// Conexiones de mentira: todo vive en memoria y se pierde al cerrar.
   ///
   /// Con [conSesionIniciada] se salta el inicio de sesión y la aplicación
-  /// abre directo en el PIN (útil en las pruebas).
-  Conexiones.simuladas({bool conSesionIniciada = false})
-    : sesion = RepositorioDeSesionSimulado(
-        conSesionIniciada: conSesionIniciada,
+  /// abre directo en "¿Quién vende hoy?" (útil en las pruebas). Con
+  /// [conCajaAbierta] en `false` la caja empieza cerrada.
+  factory Conexiones.simuladas({
+    bool conSesionIniciada = false,
+    bool conCajaAbierta = true,
+  }) {
+    final servidor = ServidorSimulado(
+      conSesionIniciada: conSesionIniciada,
+      conCajaAbierta: conCajaAbierta,
+    );
+
+    return Conexiones(
+      sesion: RepositorioDeSesionSimulado(servidor),
+      perfiles: RepositorioDePerfilesSimulado(servidor),
+      catalogo: RepositorioDeCatalogoSimulado(servidor),
+      categoriasDeProductos: RepositorioDeCategoriasSimulado.deProductos(
+        servidor,
       ),
-      vendedores = RepositorioDeVendedoresSimulado(),
-      catalogo = RepositorioDeCatalogoSimulado(),
-      ventas = RepositorioDeVentasSimulado(),
-      reportes = RepositorioDeReportesSimulado(),
-      caja = RepositorioDeCajaSimulado();
+      categoriasDeGastos: RepositorioDeCategoriasSimulado.deGastos(servidor),
+      ventas: RepositorioDeVentasSimulado(servidor),
+      caja: RepositorioDeCajaSimulado(servidor),
+      gastos: RepositorioDeGastosSimulado(servidor),
+      resumen: RepositorioDeResumenSimulado(servidor),
+    );
+  }
 
   final RepositorioDeSesion sesion;
-  final RepositorioDeVendedores vendedores;
+  final RepositorioDePerfiles perfiles;
   final RepositorioDeCatalogo catalogo;
+  final RepositorioDeCategorias categoriasDeProductos;
+  final RepositorioDeCategorias categoriasDeGastos;
   final RepositorioDeVentas ventas;
-  final RepositorioDeReportes reportes;
   final RepositorioDeCaja caja;
+  final RepositorioDeGastos gastos;
+  final RepositorioDeResumen resumen;
 }

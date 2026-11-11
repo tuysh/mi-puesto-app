@@ -1,36 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mi_puesto/app/mi_puesto_app.dart';
+import 'package:mi_puesto/datos/conexiones.dart';
 
-import 'flujo_de_venta_test.dart';
+import 'ayudas.dart';
 
-/// Recorre las pantallas de cuenta con los datos simulados: iniciar
-/// sesión, crear cuenta, crear el PIN y cerrar sesión.
+/// Recorre las pantallas para entrar con los datos simulados: iniciar
+/// sesión, crear cuenta (con su PIN y su nombre), elegir quién vende y
+/// cerrar sesión.
 void main() {
+  /// Abre la aplicación como en un dispositivo que nunca ha iniciado
+  /// sesión.
+  Future<void> abrirSinSesion(WidgetTester tester) {
+    return abrirAplicacion(tester, conexiones: Conexiones.simuladas());
+  }
+
+  /// Escribe el correo y la contraseña en "Inicia sesión".
+  Future<void> escribirCuenta(
+    WidgetTester tester,
+    String correo,
+    String contrasena,
+  ) async {
+    await tester.enterText(find.byType(TextField).at(0), correo);
+    await tester.enterText(find.byType(TextField).at(1), contrasena);
+    await tester.pump();
+  }
+
   testWidgets('sin sesión, la aplicación abre en "Inicia sesión"', (
     tester,
   ) async {
-    await abrirAplicacion(tester);
+    await abrirSinSesion(tester);
 
     expect(find.text('Inicia sesión'), findsOneWidget);
-    expect(find.text('Escribe el PIN del puesto'), findsNothing);
+    expect(find.text('¿Quién vende hoy?'), findsNothing);
   });
 
-  testWidgets('con la cuenta de ejemplo se llega al PIN del puesto', (
+  testWidgets('con la cuenta de ejemplo se llega a "¿Quién vende hoy?"', (
     tester,
   ) async {
-    await abrirAplicacion(tester);
+    await abrirSinSesion(tester);
 
     await escribirCuenta(tester, 'mari@ejemplo.com', 'pay-de-limon');
     await tester.tap(find.text('Entrar'));
     await esperarRespuesta(tester);
 
-    expect(find.text('Puesto Doña Mari'), findsOneWidget);
-    expect(find.text('Escribe el PIN del puesto'), findsOneWidget);
+    expect(find.text('¿Quién vende hoy?'), findsOneWidget);
+    expect(find.text('Mari'), findsOneWidget);
+    expect(find.text('Dueña'), findsOneWidget);
+    expect(find.text('Lupe'), findsOneWidget);
+    expect(find.text('Toño'), findsOneWidget);
   });
 
   testWidgets('una contraseña incorrecta no deja entrar', (tester) async {
-    await abrirAplicacion(tester);
+    await abrirSinSesion(tester);
 
     await escribirCuenta(tester, 'mari@ejemplo.com', 'otra-contraseña');
     await tester.tap(find.text('Entrar'));
@@ -44,7 +65,7 @@ void main() {
   });
 
   testWidgets('"Mostrar" deja ver la contraseña', (tester) async {
-    await abrirAplicacion(tester);
+    await abrirSinSesion(tester);
     await escribirCuenta(tester, 'mari@ejemplo.com', 'pay-de-limon');
 
     bool contrasenaOculta() {
@@ -58,129 +79,114 @@ void main() {
     expect(find.text('Ocultar'), findsOneWidget);
   });
 
-  testWidgets('se puede crear una cuenta, su PIN y volver a entrar', (
+  testWidgets('un PIN incorrecto no deja entrar', (tester) async {
+    await abrirAplicacion(tester);
+
+    await entrarComo(tester, 'Mari', '9999');
+
+    expect(find.text('PIN incorrecto. Intenta otra vez'), findsOneWidget);
+    expect(find.text('Hola, Mari'), findsOneWidget);
+  });
+
+  testWidgets('crear una cuenta pide el PIN dos veces y luego el nombre', (
     tester,
   ) async {
-    await abrirAplicacion(tester);
+    await abrirSinSesion(tester);
+
+    await tester.ensureVisible(find.text('Crear cuenta'));
     await tester.tap(find.text('Crear cuenta'));
     await esperarRespuesta(tester);
     expect(find.text('Crea tu cuenta'), findsOneWidget);
 
-    // Una contraseña corta no pasa.
-    await escribirCuenta(tester, 'lupe@ejemplo.com', 'corta');
-    await tester.tap(find.text('Crear cuenta'));
-    await esperarRespuesta(tester);
-    expect(
-      find.text('La contraseña necesita al menos 8 caracteres'),
-      findsOneWidget,
-    );
-    expect(find.text('Crea tu cuenta'), findsOneWidget);
-    // Deja que el aviso se quite solo, para que no tape los botones.
-    await tester.pump(const Duration(seconds: 5));
-    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(0), 'Tacos Chela');
+    await tester.enterText(find.byType(TextField).at(1), 'chela@ejemplo.com');
+    await tester.enterText(find.byType(TextField).at(2), 'salsa-verde');
+    await tocarBotonPrincipal(tester, 'Crear cuenta');
 
-    await escribirCuenta(tester, 'lupe@ejemplo.com', 'agua-de-jamaica');
-    await tester.tap(find.text('Crear cuenta'));
-    await esperarRespuesta(tester);
-
-    // Paso 1: elegir el PIN.
-    expect(find.text('Paso 1 de 2'), findsOneWidget);
-    expect(find.text('Crea el PIN del puesto'), findsOneWidget);
-    await escribirPin(tester, '2580');
+    // Paso 1: el PIN.
+    expect(find.text('Paso 1 de 3'), findsOneWidget);
+    expect(find.text('Crea tu PIN'), findsOneWidget);
+    await escribirPin(tester, '4321');
     await tester.tap(find.text('Continuar'));
     await esperarRespuesta(tester);
 
-    // Paso 2: si no coincide, hay que empezar de nuevo.
+    // Paso 2: si no es igual al primero, hay que empezar de nuevo.
     expect(find.text('Repite el PIN'), findsOneWidget);
-    await escribirPin(tester, '2581');
+    await escribirPin(tester, '1111');
     expect(
       find.text('No es igual al primero. Empieza de nuevo.'),
       findsOneWidget,
     );
-    expect(find.text('Guardar PIN'), findsNothing);
     await tester.tap(find.text('Empezar de nuevo'));
     await esperarRespuesta(tester);
-    expect(find.text('Paso 1 de 2'), findsOneWidget);
-
-    await escribirPin(tester, '2580');
+    await escribirPin(tester, '4321');
     await tester.tap(find.text('Continuar'));
     await esperarRespuesta(tester);
-    await escribirPin(tester, '2580');
+    await escribirPin(tester, '4321');
     await tester.tap(find.text('Guardar PIN'));
     await esperarRespuesta(tester);
 
-    // Después de crear el PIN se pasa directo a elegir quién vende.
-    expect(find.text('¿Quién vende hoy?'), findsOneWidget);
+    // Paso 3: el nombre. La tarjeta de muestra se va llenando.
+    expect(find.text('¿Cómo te llamas?'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'Chela');
+    await tester.pump();
+    expect(find.text('C'), findsOneWidget);
+    await tester.ensureVisible(find.text('Guardar nombre'));
+    await tester.tap(find.text('Guardar nombre'));
+    await esperarRespuesta(tester);
 
-    // Cerrar sesión pregunta antes y vuelve a "Inicia sesión".
-    await tester.tap(find.text('Cerrar sesión'));
-    await esperarRespuesta(tester);
-    expect(find.text('¿Cerrar sesión?'), findsOneWidget);
-    await tester.tap(find.text('Cerrar sesión').last);
-    await esperarRespuesta(tester);
-    expect(find.text('Inicia sesión'), findsOneWidget);
-
-    // La cuenta nueva entra con su propio PIN.
-    await escribirCuenta(tester, 'lupe@ejemplo.com', 'agua-de-jamaica');
-    await tester.tap(find.text('Entrar'));
-    await esperarRespuesta(tester);
-    expect(find.text('Escribe el PIN del puesto'), findsOneWidget);
-    await escribirPin(tester, '2580');
-    await tester.tap(find.text('Entrar'));
-    await esperarRespuesta(tester);
-    expect(find.text('¿Quién vende hoy?'), findsOneWidget);
+    // Ya dentro, sin volver a escribir el PIN. Un negocio nuevo no tiene
+    // caja abierta: lo primero es abrirla.
+    expect(find.text('Abre la caja para empezar'), findsOneWidget);
+    final sesion = dependenciasDe(tester).sesion;
+    expect(sesion.nombreDelNegocio, 'Tacos Chela');
+    expect(sesion.perfil?.nombre, 'Chela');
+    expect(sesion.esDuena, isTrue);
   });
 
   testWidgets('no se puede crear una cuenta con un correo ya usado', (
     tester,
   ) async {
-    await abrirAplicacion(tester);
+    await abrirSinSesion(tester);
+    await tester.ensureVisible(find.text('Crear cuenta'));
     await tester.tap(find.text('Crear cuenta'));
     await esperarRespuesta(tester);
 
-    await escribirCuenta(tester, 'mari@ejemplo.com', 'pay-de-limon');
-    await tester.tap(find.text('Crear cuenta'));
-    await esperarRespuesta(tester);
+    await tester.enterText(find.byType(TextField).at(0), 'Otro puesto');
+    await tester.enterText(find.byType(TextField).at(1), 'mari@ejemplo.com');
+    await tester.enterText(find.byType(TextField).at(2), 'otra-clave');
+    await tocarBotonPrincipal(tester, 'Crear cuenta');
 
     expect(find.text('Ya hay una cuenta con ese correo.'), findsOneWidget);
     expect(find.text('Crea tu cuenta'), findsOneWidget);
   });
 
-  testWidgets('"Iniciar sesión" regresa desde crear cuenta', (tester) async {
-    await abrirAplicacion(tester);
-    await tester.tap(find.text('Crear cuenta'));
+  testWidgets('tocar a quien está dentro deja entrar a otra persona', (
+    tester,
+  ) async {
+    await abrirComoDuena(tester);
+
+    // La pastilla de arriba a la derecha lleva el nombre de quien entró.
+    await tester.tap(find.text('Mari'));
     await esperarRespuesta(tester);
 
-    await tester.tap(find.text('Iniciar sesión'));
+    expect(find.text('¿Quién vende hoy?'), findsOneWidget);
+    expect(dependenciasDe(tester).sesion.perfil, isNull);
+  });
+
+  testWidgets('"Cerrar sesión" está en Más y vuelve a pedir la cuenta', (
+    tester,
+  ) async {
+    await abrirComoDuena(tester);
+    await tester.tap(find.text('Más'));
     await esperarRespuesta(tester);
+
+    await tester.ensureVisible(find.text('Cerrar sesión'));
+    await tester.tap(find.text('Cerrar sesión'));
+    await esperarRespuesta(tester);
+    expect(find.text('¿Cerrar sesión?'), findsOneWidget);
+    await tocarBotonPrincipal(tester, 'Cerrar sesión');
 
     expect(find.text('Inicia sesión'), findsOneWidget);
-    expect(find.text('Crea tu cuenta'), findsNothing);
   });
-}
-
-/// Abre la aplicación en un teléfono, sin ninguna sesión iniciada.
-Future<void> abrirAplicacion(WidgetTester tester) async {
-  usarPantallaDeTelefono(tester);
-  await tester.pumpWidget(const MiPuestoApp());
-  await esperarRespuesta(tester);
-}
-
-/// Llena los campos "Correo" y "Contraseña" de la pantalla visible.
-Future<void> escribirCuenta(
-  WidgetTester tester,
-  String correo,
-  String contrasena,
-) async {
-  await tester.enterText(find.byType(TextField).first, correo);
-  await tester.enterText(find.byType(TextField).last, contrasena);
-  await tester.pump();
-}
-
-/// Toca los dígitos de [pin] en el teclado del PIN.
-Future<void> escribirPin(WidgetTester tester, String pin) async {
-  for (final digito in pin.split('')) {
-    await tester.tap(find.text(digito));
-  }
-  await esperarRespuesta(tester);
 }

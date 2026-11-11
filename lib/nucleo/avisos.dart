@@ -8,11 +8,6 @@ void mostrarAviso(BuildContext context, String mensaje) {
     ..showSnackBar(SnackBar(content: Text(mensaje)));
 }
 
-/// Avisa que una función aparece en el diseño pero todavía no existe.
-void mostrarAvisoDePendiente(BuildContext context, String funcion) {
-  mostrarAviso(context, '$funcion: disponible próximamente');
-}
-
 /// Avisa que algo falló. Si [error] trae una explicación del servidor
 /// ("Ya hay una cuenta con ese correo."), se muestra esa; si no, se muestra
 /// [siNoHayExplicacion].

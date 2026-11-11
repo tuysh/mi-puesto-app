@@ -1,9 +1,9 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:mi_puesto/app/dependencias.dart';
 import 'package:mi_puesto/controladores/controlador_de_catalogo.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
-import 'package:mi_puesto/pantallas/productos/cambiar_visibilidad.dart';
+import 'package:mi_puesto/pantallas/productos/cambiar_disponibilidad.dart';
 import 'package:mi_puesto/pantallas/productos/widgets/encabezado_de_productos.dart';
 import 'package:mi_puesto/pantallas/productos/widgets/formulario_de_producto.dart';
 import 'package:mi_puesto/pantallas/productos/widgets/tabla_de_productos.dart';
@@ -21,31 +21,24 @@ class _EstadoDeVistaProductosTablet extends State<VistaProductosTablet> {
   /// `id` del producto elegido en la tabla.
   String? _idElegido;
 
-  /// Producto en blanco que se está capturando tras tocar "Nuevo producto";
-  /// `null` cuando se está editando uno que ya existe.
-  Producto? _productoNuevo;
+  /// `true` mientras se captura un producto nuevo (tras tocar "Nuevo
+  /// producto"); `false` cuando se edita uno que ya existe.
+  bool _creandoUnoNuevo = false;
 
-  /// El producto que muestra el formulario: el nuevo si se está creando
-  /// uno; si no, el elegido en la tabla; y si no hay elegido, el primero.
+  /// El producto que muestra el formulario: uno en blanco si se está
+  /// creando; si no, el elegido en la tabla; y si no hay elegido, el
+  /// primero.
   Producto? _productoEnEdicion(ControladorDeCatalogo catalogo) {
-    return _productoNuevo ??
-        catalogo.buscarProducto(_idElegido) ??
+    if (_creandoUnoNuevo) return const Producto.nuevo();
+
+    return catalogo.buscarProducto(_idElegido) ??
         catalogo.productos.firstOrNull;
   }
 
   void _elegir(Producto producto) {
     setState(() {
       _idElegido = producto.id;
-      _productoNuevo = null;
-    });
-  }
-
-  void _empezarProductoNuevo() {
-    final categorias = Dependencias.de(context).catalogo.categorias;
-    if (categorias.isEmpty) return;
-
-    setState(() {
-      _productoNuevo = Producto.nuevo(categoriaId: categorias.first.id);
+      _creandoUnoNuevo = false;
     });
   }
 
@@ -72,19 +65,20 @@ class _EstadoDeVistaProductosTablet extends State<VistaProductosTablet> {
                   spacing: 14,
                   children: [
                     EncabezadoDeProductos(
-                      productos: catalogo.productos,
-                      alCrear: _empezarProductoNuevo,
+                      cuantosProductos: catalogo.productos.length,
+                      cuantosHayHoy: catalogo.cuantosHayHoy,
+                      alCrear: () => setState(() => _creandoUnoNuevo = true),
                     ),
                     Expanded(
                       child: TablaDeProductos(
                         productos: catalogo.productos,
                         idElegido: enEdicion?.id,
                         alElegir: _elegir,
-                        alCambiarVisibilidad: (producto, aLaVenta) {
-                          cambiarVisibilidad(
+                        alCambiarSiHayHoy: (producto, hayHoy) {
+                          cambiarDisponibilidad(
                             context,
                             producto,
-                            aLaVenta: aLaVenta,
+                            hayHoy: hayHoy,
                           );
                         },
                       ),
@@ -107,7 +101,11 @@ class _EstadoDeVistaProductosTablet extends State<VistaProductosTablet> {
                       // cambiar de producto.
                       key: ValueKey(enEdicion.id),
                       producto: enEdicion,
+                      conTitulo: true,
                       alGuardar: _elegir,
+                      // Al desactivarlo sale de la tabla: el formulario
+                      // pasa solo al primero de los que quedan.
+                      alDesactivar: () => setState(() => _idElegido = null),
                     ),
             ),
           ],

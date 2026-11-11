@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:mi_puesto/datos/error_del_servidor.dart';
 import 'package:mi_puesto/datos/http/almacen_de_sesion.dart';
 
-/// Habla con la API v1 del servidor: arma las direcciones, manda el token
+/// Habla con la API v2 del servidor: arma las direcciones, manda el token
 /// de la sesión, convierte el JSON y traduce los errores a
 /// [ErrorDelServidor].
 ///
@@ -25,46 +25,43 @@ class ClienteDeApi {
   /// Lo más que se espera una respuesta antes de darla por perdida.
   static const _esperaMaxima = Duration(seconds: 20);
 
-  SesionGuardada? _sesion;
+  String? _token;
   bool _yaSeLeyoElAlmacen = false;
 
   /// Se llama cuando el servidor deja de reconocer la sesión (por ejemplo,
   /// porque se cerró desde otro lado) en medio del uso de la aplicación.
   void Function()? alPerderLaSesion;
 
-  /// La sesión de este dispositivo, o `null` si no hay ninguna.
-  Future<SesionGuardada?> leerSesion() async {
+  /// Se llama cuando el servidor responde que nadie ha escrito su PIN en
+  /// este dispositivo (`sin_perfil`) en medio del uso de la aplicación.
+  void Function()? alNoHaberNadieDentro;
+
+  /// El token de este dispositivo, o `null` si no hay sesión.
+  Future<String?> leerToken() async {
     if (!_yaSeLeyoElAlmacen) {
-      _sesion = await _almacen.leer();
+      _token = await _almacen.leerToken();
       _yaSeLeyoElAlmacen = true;
     }
-    return _sesion;
+    return _token;
   }
 
-  Future<void> guardarSesion(SesionGuardada sesion) async {
-    _sesion = sesion;
+  Future<void> guardarToken(String token) async {
+    _token = token;
     _yaSeLeyoElAlmacen = true;
-    await _almacen.guardar(sesion);
+    await _almacen.guardarToken(token);
   }
 
-  Future<void> olvidarSesion() async {
-    _sesion = null;
+  Future<void> olvidarToken() async {
+    _token = null;
     _yaSeLeyoElAlmacen = true;
-    await _almacen.borrar();
-  }
-
-  /// El inicio de casi todas las rutas: `/puestos/<id del puesto>`.
-  Future<String> rutaDelPuesto() async {
-    final sesion = await leerSesion();
-    if (sesion == null) throw const _SesionCerrada();
-    return '/puestos/${sesion.puestoId}';
+    await _almacen.borrarToken();
   }
 
   /// Hace una petición y devuelve el JSON de la respuesta ya convertido
   /// (un `Map`, una `List`…), o `null` si la respuesta no trae cuerpo.
   ///
   /// - [metodo]: `GET`, `POST`, `PUT`, `PATCH` o `DELETE`.
-  /// - [ruta]: lo que va después de `/api/v1`, por ejemplo `/cuenta/login`.
+  /// - [ruta]: lo que va después de `/api/v2`, por ejemplo `/cuenta/login`.
   /// - [consulta]: los parámetros que van después del `?`.
   /// - [cuerpo]: lo que se manda como JSON.
   /// - [conSesion]: `false` solo para registro y login, que no llevan token.
@@ -127,7 +124,7 @@ class ClienteDeApi {
 
   Uri _direccion(String ruta, Map<String, String>? consulta) {
     return _base.replace(
-      path: '${_base.path.replaceFirst(RegExp(r'/$'), '')}/api/v1$ruta',
+      path: '${_base.path.replaceFirst(RegExp(r'/$'), '')}/api/v2$ruta',
       queryParameters: consulta,
     );
   }
@@ -141,9 +138,9 @@ class ClienteDeApi {
   }) async {
     peticion.headers['Accept'] = 'application/json';
     if (conSesion) {
-      final sesion = await leerSesion();
-      if (sesion == null) throw const _SesionCerrada();
-      peticion.headers['Authorization'] = 'Bearer ${sesion.token}';
+      final token = await leerToken();
+      if (token == null) throw const _SesionCerrada();
+      peticion.headers['Authorization'] = 'Bearer $token';
     }
 
     final http.Response respuesta;
@@ -159,38 +156,55 @@ class ClienteDeApi {
 
     if (respuesta.statusCode >= 400) {
       if (respuesta.statusCode == 401 && conSesion) {
-        await olvidarSesion();
+        await olvidarToken();
         if (avisarSiSePierdeLaSesion) alPerderLaSesion?.call();
         throw const _SesionCerrada();
       }
-      throw ErrorDelServidor(
-        _mensajeDeError(respuesta),
-        codigo: respuesta.statusCode,
-      );
+
+      final error = _errorDe(respuesta);
+      if (error.codigo == CodigosDeError.sinPerfil) {
+        alNoHaberNadieDentro?.call();
+      }
+      throw error;
     }
 
     if (respuesta.bodyBytes.isEmpty) return null;
     return jsonDecode(utf8.decode(respuesta.bodyBytes));
   }
 
-  /// Saca de una respuesta de error el texto para mostrar.
+  /// Convierte una respuesta de error en un [ErrorDelServidor].
   ///
-  /// El servidor manda `{"detail": "…"}` o, en los 400, una lista de
-  /// mensajes por campo: `{"nombre": ["…"], "precio": ["…"]}`.
-  String _mensajeDeError(http.Response respuesta) {
-    if (respuesta.statusCode == 429) {
+  /// El servidor manda `{"detail": "…", "codigo": "…"}` o, en algunos 400,
+  /// una lista de mensajes por campo: `{"nombre": ["…"], "pin": ["…"]}`.
+  ErrorDelServidor _errorDe(http.Response respuesta) {
+    Object? json;
+    try {
+      json = jsonDecode(utf8.decode(respuesta.bodyBytes));
+    } catch (_) {
+      // El cuerpo no era JSON (por ejemplo, una página de error 502).
+    }
+
+    return ErrorDelServidor(
+      _mensajeDeError(respuesta.statusCode, json),
+      codigoHttp: respuesta.statusCode,
+      codigo: json is Map ? json['codigo'] as String? : null,
+    );
+  }
+
+  String _mensajeDeError(int codigoHttp, Object? json) {
+    if (codigoHttp == 429) {
       return 'Demasiados intentos. Espera unos minutos.';
     }
 
     final mensajes = <String>[];
-    try {
-      _juntarMensajes(jsonDecode(utf8.decode(respuesta.bodyBytes)), mensajes);
-    } catch (_) {
-      // El cuerpo no era JSON (por ejemplo, una página de error 502).
+    if (json is Map && json['detail'] is String) {
+      mensajes.add(json['detail'] as String);
+    } else {
+      _juntarMensajes(json, mensajes);
     }
     if (mensajes.isNotEmpty) return mensajes.join(' ');
 
-    return respuesta.statusCode >= 500
+    return codigoHttp >= 500
         ? 'El servidor no está disponible. Intenta más tarde.'
         : 'El servidor no aceptó la petición.';
   }
@@ -211,14 +225,8 @@ class ClienteDeApi {
   }
 }
 
-/// No se pudo hablar con el servidor: no llegó ninguna respuesta.
-class ErrorDeConexion extends ErrorDelServidor {
-  const ErrorDeConexion()
-    : super('No hay conexión con el servidor. Revisa tu internet.');
-}
-
 /// El servidor ya no reconoce la sesión de este dispositivo.
 class _SesionCerrada extends ErrorDelServidor {
   const _SesionCerrada()
-    : super('La sesión se cerró. Vuelve a iniciar sesión.', codigo: 401);
+    : super('La sesión se cerró. Vuelve a iniciar sesión.', codigoHttp: 401);
 }

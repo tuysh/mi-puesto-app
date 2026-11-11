@@ -7,11 +7,14 @@ import 'package:mi_puesto/nucleo/widgets/campo_de_texto.dart';
 /// Abre un diálogo que pide un texto y espera la respuesta.
 ///
 /// Devuelve lo que la persona escribió, o `null` si canceló o lo dejó vacío.
+/// Con [valorInicial] el campo ya trae un texto para corregirlo.
 Future<String?> pedirTexto(
   BuildContext context, {
   required String titulo,
   String? sugerencia,
   String? prefijo,
+  String valorInicial = '',
+  int? maximoDeLetras,
   bool esNumero = false,
 }) async {
   final respuesta = await showDialog<String>(
@@ -20,6 +23,8 @@ Future<String?> pedirTexto(
       titulo: titulo,
       sugerencia: sugerencia,
       prefijo: prefijo,
+      valorInicial: valorInicial,
+      maximoDeLetras: maximoDeLetras,
       esNumero: esNumero,
     ),
   );
@@ -33,12 +38,16 @@ class _DialogoDeTexto extends StatefulWidget {
     required this.titulo,
     required this.sugerencia,
     required this.prefijo,
+    required this.valorInicial,
+    required this.maximoDeLetras,
     required this.esNumero,
   });
 
   final String titulo;
   final String? sugerencia;
   final String? prefijo;
+  final String valorInicial;
+  final int? maximoDeLetras;
   final bool esNumero;
 
   @override
@@ -46,7 +55,7 @@ class _DialogoDeTexto extends StatefulWidget {
 }
 
 class _EstadoDeDialogoDeTexto extends State<_DialogoDeTexto> {
-  final _controlador = TextEditingController();
+  late final _controlador = TextEditingController(text: widget.valorInicial);
 
   @override
   void dispose() {
@@ -67,6 +76,8 @@ class _EstadoDeDialogoDeTexto extends State<_DialogoDeTexto> {
         sugerencia: widget.sugerencia,
         prefijo: widget.prefijo,
         esNumero: widget.esNumero,
+        maximoDeLetras: widget.maximoDeLetras,
+        alEnviar: _aceptar,
         enfocarAlAbrir: true,
       ),
       actions: [

@@ -1,91 +1,85 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mi_puesto/app/mi_puesto_app.dart';
-import 'package:mi_puesto/datos/conexiones.dart';
 
-import 'flujo_de_venta_test.dart';
+import 'ayudas.dart';
 
+/// La pantalla "Categorías": las de productos y las de gastos, con los
+/// datos simulados.
 void main() {
-  testWidgets('se puede agregar una categoría nueva', (tester) async {
-    await abrirCategorias(tester);
+  testWidgets('se puede agregar una categoría de productos', (tester) async {
+    await abrirComoDuena(tester);
+    await abrirDesdeMas(tester, 'Categorías');
+
     expect(find.text('Postres'), findsOneWidget);
+    expect(find.text('5 productos'), findsOneWidget);
 
-    // Crear "Helados".
-    await tester.tap(find.text('Nueva categoría'));
-    await esperarRespuesta(tester);
     await tester.enterText(find.byType(TextField), 'Helados');
-    await tester.tap(find.text('Guardar categoría'));
+    await tester.tap(find.text('Agregar'));
     await esperarRespuesta(tester);
 
-    // Aparece en la lista, todavía sin productos…
     expect(find.text('Helados'), findsOneWidget);
     expect(find.text('0 productos'), findsOneWidget);
-
-    // …y en el filtro de la pantalla Vender.
-    await tester.tap(find.byTooltip('Volver'));
-    await esperarRespuesta(tester);
-    await tester.tap(find.text('Vender'));
-    await esperarRespuesta(tester);
-    expect(find.text('🍽️ Helados'), findsOneWidget);
+    // "Vender" se entera: la categoría nueva ya está en el catálogo.
+    final categorias = dependenciasDe(tester).catalogo.categorias;
+    expect(categorias.last.nombre, 'Helados');
   });
 
-  testWidgets('se puede eliminar una categoría sin productos', (tester) async {
-    await abrirCategorias(tester);
+  testWidgets('no puede haber dos categorías con el mismo nombre', (
+    tester,
+  ) async {
+    await abrirComoDuena(tester);
+    await abrirDesdeMas(tester, 'Categorías');
 
-    // Crear "Helados" y volver a abrirla.
-    await tester.tap(find.text('Nueva categoría'));
-    await esperarRespuesta(tester);
-    await tester.enterText(find.byType(TextField), 'Helados');
-    await tester.tap(find.text('Guardar categoría'));
-    await esperarRespuesta(tester);
-    await tester.tap(find.text('Helados'));
+    await tester.enterText(find.byType(TextField), 'postres');
+    await tester.tap(find.text('Agregar'));
     await esperarRespuesta(tester);
 
-    // Eliminarla, confirmando en el diálogo.
-    await tester.tap(find.text('Eliminar categoría'));
-    await esperarRespuesta(tester);
-    expect(find.text('¿Eliminar Helados?'), findsOneWidget);
-    await tester.tap(find.text('Eliminar'));
-    await esperarRespuesta(tester);
-
-    expect(find.text('Helados'), findsNothing);
-    expect(find.text('Postres'), findsOneWidget);
+    expect(find.text('Ya hay una categoría con ese nombre.'), findsOneWidget);
   });
 
-  testWidgets('una categoría con productos no se elimina', (tester) async {
-    await abrirCategorias(tester);
+  testWidgets('al eliminar una categoría sus productos quedan sin ella', (
+    tester,
+  ) async {
+    await abrirComoDuena(tester);
+    await abrirDesdeMas(tester, 'Categorías');
 
-    await tester.tap(find.text('Postres'));
+    await tester.tap(find.byTooltip('Eliminar Dulces'));
     await esperarRespuesta(tester);
-    await tester.tap(find.text('Eliminar categoría'));
-    await esperarRespuesta(tester);
+    expect(find.text('¿Eliminar Dulces?'), findsOneWidget);
+    await tocarBotonPrincipal(tester, 'Eliminar');
 
-    // No pregunta nada: solo explica por qué no se puede.
-    expect(find.text('¿Eliminar Postres?'), findsNothing);
-    expect(find.textContaining('Pásalos a otra categoría'), findsOneWidget);
+    expect(find.text('Dulces'), findsNothing);
+    final catalogo = dependenciasDe(tester).catalogo;
+    final paleta = catalogo.productos.firstWhere((p) => p.nombre == 'Paleta');
+    expect(paleta.categoriaId, isNull);
   });
-}
 
-/// Entra a la aplicación y llega a Productos › Categorías.
-Future<void> abrirCategorias(WidgetTester tester) async {
-  usarPantallaDeTelefono(tester);
-  await tester.pumpWidget(
-    MiPuestoApp(conexiones: Conexiones.simuladas(conSesionIniciada: true)),
-  );
-  await esperarRespuesta(tester);
+  testWidgets('las categorías de gastos van en su propia pestaña', (
+    tester,
+  ) async {
+    await abrirComoDuena(tester);
+    await abrirDesdeMas(tester, 'Categorías');
 
-  for (final digito in ['1', '2', '3', '4']) {
-    await tester.tap(find.text(digito));
-  }
-  await esperarRespuesta(tester);
-  await tester.tap(find.text('Entrar'));
-  await esperarRespuesta(tester);
-  await tester.tap(find.text('Mari'));
-  await esperarRespuesta(tester);
-  await tester.tap(find.text('Más'));
-  await esperarRespuesta(tester);
-  await tester.tap(find.text('Productos'));
-  await esperarRespuesta(tester);
-  await tester.tap(find.text('Categorías'));
-  await esperarRespuesta(tester);
+    await tester.tap(find.text('De gastos'));
+    await esperarRespuesta(tester);
+    expect(find.text('Ingredientes'), findsOneWidget);
+    expect(find.text('Postres'), findsNothing);
+    // Los dos gastos de ejemplo: uno de Ingredientes y uno de Plaza.
+    expect(find.text('1 gasto'), findsNWidgets(2));
+
+    // Renombrar "Gas" a "Gas y luz".
+    await tester.tap(find.byTooltip('Cambiar nombre de Gas'));
+    await esperarRespuesta(tester);
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(TextField),
+      ),
+      'Gas y luz',
+    );
+    await tocarBotonPrincipal(tester, 'Aceptar');
+
+    expect(find.text('Gas y luz'), findsOneWidget);
+    expect(find.text('Gas'), findsNothing);
+  });
 }

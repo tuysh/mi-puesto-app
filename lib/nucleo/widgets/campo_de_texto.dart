@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/nucleo/tema/medidas.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
@@ -14,6 +15,8 @@ class CampoDeTexto extends StatelessWidget {
     this.estilo,
     this.alCambiar,
     this.enfocarAlAbrir = false,
+    this.maximoDeLetras,
+    this.alEnviar,
   });
 
   final TextEditingController controlador;
@@ -35,6 +38,12 @@ class CampoDeTexto extends StatelessWidget {
   /// Si es `true` el teclado se abre solo al mostrarse el campo.
   final bool enfocarAlAbrir;
 
+  /// Cuántas letras caben, como mucho; `null` si no hay límite.
+  final int? maximoDeLetras;
+
+  /// Se llama al tocar "Listo" en el teclado.
+  final VoidCallback? alEnviar;
+
   @override
   Widget build(BuildContext context) {
     return TextField(
@@ -42,6 +51,13 @@ class CampoDeTexto extends StatelessWidget {
       onChanged: alCambiar,
       autofocus: enfocarAlAbrir,
       autocorrect: false,
+      onSubmitted: alEnviar == null ? null : (_) => alEnviar!(),
+      // Los nombres empiezan con mayúscula sin tener que buscarla.
+      textCapitalization: TextCapitalization.sentences,
+      inputFormatters: [
+        if (maximoDeLetras != null)
+          LengthLimitingTextInputFormatter(maximoDeLetras),
+      ],
       keyboardType: esNumero
           ? const TextInputType.numberWithOptions(decimal: true)
           : TextInputType.text,

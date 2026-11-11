@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:mi_puesto/app/dependencias.dart';
 import 'package:mi_puesto/nucleo/avisos.dart';
 import 'package:mi_puesto/nucleo/navegacion.dart';
-import 'package:mi_puesto/nucleo/tema/colores.dart';
+import 'package:mi_puesto/nucleo/widgets/boton_de_volver.dart';
 import 'package:mi_puesto/nucleo/widgets/boton_principal.dart';
+import 'package:mi_puesto/nucleo/widgets/campo_alto.dart';
 import 'package:mi_puesto/pantallas/acceso/pantalla_de_crear_pin.dart';
 import 'package:mi_puesto/pantallas/acceso/parece_correo.dart';
 import 'package:mi_puesto/pantallas/acceso/widgets/campo_de_contrasena.dart';
@@ -12,8 +13,9 @@ import 'package:mi_puesto/pantallas/acceso/widgets/encabezado_de_cuenta.dart';
 import 'package:mi_puesto/pantallas/acceso/widgets/lienzo_de_cuenta.dart';
 import 'package:mi_puesto/pantallas/acceso/widgets/pie_de_cuenta.dart';
 
-/// Pantalla 0B: crea una cuenta nueva con correo y contraseña. Se abre
-/// encima de "Inicia sesión" y, al terminar, sigue con crear el PIN.
+/// Pantalla 1.2: crea la cuenta de un negocio nuevo (su nombre, un correo
+/// y una contraseña). Se abre encima de "Inicia sesión" y, al terminar,
+/// sigue con crear el PIN de la dueña.
 class PantallaDeCrearCuenta extends StatefulWidget {
   const PantallaDeCrearCuenta({super.key});
 
@@ -25,6 +27,7 @@ class PantallaDeCrearCuenta extends StatefulWidget {
 class _EstadoDePantallaDeCrearCuenta extends State<PantallaDeCrearCuenta> {
   static const _largoMinimoDeContrasena = 8;
 
+  final _negocio = TextEditingController();
   final _correo = TextEditingController();
   final _contrasena = TextEditingController();
 
@@ -32,6 +35,7 @@ class _EstadoDePantallaDeCrearCuenta extends State<PantallaDeCrearCuenta> {
 
   @override
   void dispose() {
+    _negocio.dispose();
     _correo.dispose();
     _contrasena.dispose();
     super.dispose();
@@ -40,8 +44,13 @@ class _EstadoDePantallaDeCrearCuenta extends State<PantallaDeCrearCuenta> {
   Future<void> _crearCuenta() async {
     if (_creando) return;
 
+    final nombreDelNegocio = _negocio.text.trim();
     final correo = _correo.text.trim();
     final contrasena = _contrasena.text;
+    if (nombreDelNegocio.isEmpty) {
+      mostrarAviso(context, 'Escribe el nombre de tu negocio');
+      return;
+    }
     if (!pareceCorreo(correo)) {
       mostrarAviso(context, 'Escribe tu correo');
       return;
@@ -57,7 +66,11 @@ class _EstadoDePantallaDeCrearCuenta extends State<PantallaDeCrearCuenta> {
     final sesion = Dependencias.de(context).sesion;
     setState(() => _creando = true);
     try {
-      await sesion.crearCuenta(correo: correo, contrasena: contrasena);
+      await sesion.crearCuenta(
+        nombreDelNegocio: nombreDelNegocio,
+        correo: correo,
+        contrasena: contrasena,
+      );
       if (!mounted) return;
 
       reemplazarTodasLasPantallas(context, const PantallaDeCrearPin());
@@ -87,21 +100,16 @@ class _EstadoDePantallaDeCrearCuenta extends State<PantallaDeCrearCuenta> {
       children: [
         Align(
           alignment: Alignment.centerLeft,
-          child: IconButton(
-            tooltip: 'Volver a iniciar sesión',
-            onPressed: () => cerrarPantalla(context),
-            icon: const Icon(Icons.chevron_left_rounded, size: 32),
-            color: Colores.tinta,
-            padding: EdgeInsets.zero,
-            // Lleva la flecha al margen, alineada con el título.
-            alignment: Alignment.centerLeft,
+          child: BotonDeVolver(
+            etiqueta: 'Volver a iniciar sesión',
+            alTocar: () => cerrarPantalla(context),
           ),
         ),
         const EncabezadoDeCuenta(
           titulo: 'Crea tu cuenta',
           explicacion:
-              'Con tu cuenta, las ventas se guardan en la nube y no se '
-              'pierden si cambias de teléfono.',
+              'Una cuenta por negocio. Las ventas se guardan en la nube y '
+              'no se pierden si cambias de teléfono.',
         ),
         // Agrupados para que el teléfono ofrezca guardar la contraseña.
         AutofillGroup(
@@ -109,6 +117,11 @@ class _EstadoDePantallaDeCrearCuenta extends State<PantallaDeCrearCuenta> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: 14,
             children: [
+              CampoAlto(
+                etiqueta: 'Nombre de tu negocio',
+                controlador: _negocio,
+                sugerencia: 'Ej. Puesto Doña Mari',
+              ),
               CampoDeCorreo(
                 controlador: _correo,
                 sugerencia: 'tucorreo@ejemplo.com',

@@ -1,57 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:mi_puesto/datos/modelos/dinero.dart';
-import 'package:mi_puesto/datos/modelos/linea_de_pedido.dart';
 import 'package:mi_puesto/nucleo/formato/formato_dinero.dart';
 import 'package:mi_puesto/nucleo/tema/tipografia.dart';
-import 'package:mi_puesto/nucleo/widgets/boton_de_enlace.dart';
 import 'package:mi_puesto/nucleo/widgets/cifra_con_doble_raya.dart';
 import 'package:mi_puesto/nucleo/widgets/linea_punteada.dart';
 import 'package:mi_puesto/nucleo/widgets/renglon_de_monto.dart';
 import 'package:mi_puesto/nucleo/widgets/tarjeta_elevada.dart';
 
-/// La cuenta del pedido al cobrar: un renglón por producto, el total con
-/// doble raya y el enlace para volver a cambiar los productos.
+/// La cuenta de un pedido o de una venta: un renglón por producto
+/// ("3 × Horchata grande   $75") y el total con doble raya.
 class TarjetaDePedido extends StatelessWidget {
   const TarjetaDePedido({
     super.key,
-    required this.lineas,
+    required this.renglones,
     required this.total,
-    required this.alCambiarProductos,
+    this.tamanoDeTotal = 48,
+    this.alPie,
   });
 
-  final List<LineaDePedido> lineas;
+  /// Cada renglón: qué se lleva y cuánto suma.
+  final List<({String concepto, Dinero subtotal})> renglones;
+
   final Dinero total;
-  final VoidCallback alCambiarProductos;
+  final double tamanoDeTotal;
+
+  /// Lo que va debajo del total, por ejemplo el enlace "Cambiar productos".
+  final Widget? alPie;
 
   @override
   Widget build(BuildContext context) {
     return TarjetaElevada(
-      relleno: const EdgeInsets.fromLTRB(18, 18, 18, 10),
+      relleno: EdgeInsets.fromLTRB(18, 16, 18, alPie == null ? 16 : 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 10,
+        spacing: 8,
         children: [
-          for (final linea in lineas)
+          for (final renglon in renglones)
             RenglonDeMonto(
-              concepto: '${linea.cantidad} × ${linea.producto.nombreCorto}',
-              monto: formatearDinero(linea.subtotal),
+              concepto: renglon.concepto,
+              monto: formatearDinero(renglon.subtotal),
             ),
+          const SizedBox(height: 0),
           const LineaPunteada(),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Total', style: Tipografia.texto(18, peso: 800)),
-              CifraConDobleRaya(formatearDinero(total), tamano: 52),
+              CifraConDobleRaya(formatearDinero(total), tamano: tamanoDeTotal),
             ],
           ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: BotonDeEnlace(
-              texto: 'Cambiar productos',
-              icono: Icons.edit_outlined,
-              alTocar: alCambiarProductos,
-            ),
-          ),
+          if (alPie != null)
+            Align(alignment: Alignment.centerLeft, child: alPie),
         ],
       ),
     );

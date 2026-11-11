@@ -31,7 +31,7 @@ class BotonDeCobrar extends StatelessWidget {
             const Icon(
               Icons.arrow_forward_rounded,
               color: Colores.superficie,
-              size: 22,
+              size: 20,
             ),
           ],
         ),

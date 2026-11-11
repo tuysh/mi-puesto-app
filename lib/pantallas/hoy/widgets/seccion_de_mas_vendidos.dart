@@ -1,63 +1,65 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:mi_puesto/app/dependencias.dart';
-import 'package:mi_puesto/controladores/controlador_de_catalogo.dart';
-import 'package:mi_puesto/datos/modelos/resumen_del_dia.dart';
-import 'package:mi_puesto/nucleo/tema/colores.dart';
+import 'package:mi_puesto/datos/modelos/resumen.dart';
+import 'package:mi_puesto/nucleo/formato/formato_dinero.dart';
 import 'package:mi_puesto/nucleo/widgets/imagen_de_producto.dart';
+import 'package:mi_puesto/nucleo/widgets/renglon_de_mas_vendido.dart';
 import 'package:mi_puesto/nucleo/widgets/tarjeta_de_seccion.dart';
-import 'package:mi_puesto/pantallas/hoy/widgets/renglon_de_mas_vendido.dart';
+import 'package:mi_puesto/nucleo/widgets/texto_de_ayuda.dart';
 
-/// La tarjeta "Lo más vendido" de la pantalla "Hoy".
+/// La tarjeta "Lo más vendido": un renglón por producto, con una barra que
+/// lo compara con el primero. La usan "Hoy" y "Reportes".
 class SeccionDeMasVendidos extends StatelessWidget {
-  const SeccionDeMasVendidos({super.key, required this.masVendidos});
+  const SeccionDeMasVendidos({
+    super.key,
+    required this.productos,
+    required this.orden,
+    this.alLadoDelTitulo,
+  });
 
-  /// Ordenados del más vendido al menos vendido.
-  final List<ProductoVendido> masVendidos;
+  /// Ya ordenados, del más vendido al menos vendido.
+  final List<ProductoVendido> productos;
+
+  /// Con qué se comparan: por piezas o por dinero. Decide qué número se
+  /// escribe y qué tan llena va cada barra.
+  final OrdenDeProductos orden;
+
+  /// Lo que va a la derecha del título: en "Reportes", el interruptor
+  /// "Piezas · Dinero".
+  final Widget? alLadoDelTitulo;
+
+  /// El número con el que se compara un producto, según [orden].
+  int _medidaDe(ProductoVendido producto) {
+    return orden == OrdenDeProductos.cantidad
+        ? producto.piezas
+        : producto.vendido.centavos;
+  }
 
   @override
   Widget build(BuildContext context) {
     final catalogo = Dependencias.de(context).catalogo;
-
-    // El primero es el más vendido: su barra se dibuja completa y las
-    // demás se comparan contra él.
-    final piezasDelPrimero = masVendidos.isEmpty ? 1 : masVendidos.first.piezas;
+    // El primero es el más vendido: su barra va llena.
+    final mayor = productos.isEmpty ? 0 : _medidaDe(productos.first);
 
     return TarjetaDeSeccion(
       titulo: 'Lo más vendido',
+      alLadoDelTitulo: alLadoDelTitulo,
       children: [
-        for (final vendido in masVendidos)
+        if (productos.isEmpty) const TextoDeAyuda('Todavía no hay ventas.'),
+        for (final producto in productos)
           RenglonDeMasVendido(
-            imagen: _imagen(catalogo, vendido),
-            // Si el producto sigue en el catálogo se usa su nombre corto,
-            // que es el que cabe mejor en el renglón.
-            nombre:
-                catalogo.buscarProducto(vendido.productoId)?.nombreCorto ??
-                vendido.nombre,
-            piezas: vendido.piezas,
-            fraccion: vendido.piezas / piezasDelPrimero,
+            imagen: ImagenDeProducto.deVendido(
+              producto,
+              colores: catalogo.coloresDe(producto.categoriaId),
+              tamano: 40,
+            ),
+            nombre: producto.nombreCompleto,
+            valor: orden == OrdenDeProductos.cantidad
+                ? '${producto.piezas} pzs'
+                : formatearDinero(producto.vendido),
+            fraccion: mayor == 0 ? 0 : _medidaDe(producto) / mayor,
           ),
       ],
-    );
-  }
-
-  /// La imagen del producto como está hoy en el catálogo. Si el producto
-  /// ya no existe, el emoji con el que se vendió sobre un fondo gris.
-  Widget _imagen(ControladorDeCatalogo catalogo, ProductoVendido vendido) {
-    final producto = catalogo.buscarProducto(vendido.productoId);
-    if (producto == null) {
-      return ImagenDeProducto(
-        nombre: vendido.nombre,
-        emoji: vendido.emoji,
-        colores: const ParDeColores(
-          fondo: Colores.superficieHundida,
-          tinta: Colores.tinta,
-        ),
-      );
-    }
-
-    return ImagenDeProducto.de(
-      producto,
-      colores: catalogo.categoriaDe(producto).colores,
     );
   }
 }

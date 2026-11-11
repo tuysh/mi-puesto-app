@@ -1,11 +1,8 @@
-/// Funciones para pasar los datos del servidor (JSON) a los modelos de la
-/// aplicación, y de regreso.
+/// Funciones para pasar los datos sueltos del servidor (JSON) a los de la
+/// aplicación, y de regreso: dinero, ids, fechas.
 library;
 
-import 'dart:ui';
-
 import 'package:mi_puesto/datos/modelos/dinero.dart';
-import 'package:mi_puesto/nucleo/tema/colores.dart';
 
 /// Lee dinero del servidor, que lo manda como texto: `"45.00"`.
 ///
@@ -30,6 +27,12 @@ Dinero dineroDeJson(Object? valor) {
   return Dinero.centavos(esNegativo ? -total : total);
 }
 
+/// Igual que [dineroDeJson], pero conserva el `null` (por ejemplo, el
+/// cambio de una venta con tarjeta).
+Dinero? dineroONadaDeJson(Object? valor) {
+  return valor == null ? null : dineroDeJson(valor);
+}
+
 /// Escribe dinero como lo espera el servidor: `"45.00"`.
 String dineroAJson(Dinero monto) {
   final signo = monto.esNegativo ? '-' : '';
@@ -42,6 +45,10 @@ String dineroAJson(Dinero monto) {
 /// Los ids del servidor son números; en la aplicación son texto.
 String idDeJson(Object? valor) => valor.toString();
 
+/// Igual que [idDeJson], pero conserva el `null` (por ejemplo, un producto
+/// sin categoría).
+String? idONadaDeJson(Object? valor) => valor?.toString();
+
 /// Convierte un id de la aplicación al número que espera el servidor.
 int idAJson(String id) => int.parse(id);
 
@@ -50,41 +57,17 @@ DateTime momentoDeJson(Object? valor) {
   return DateTime.parse(valor.toString()).toLocal();
 }
 
+/// Igual que [momentoDeJson], pero conserva el `null`.
+DateTime? momentoONadaDeJson(Object? valor) {
+  return valor == null ? null : momentoDeJson(valor);
+}
+
+/// Lee un día suelto del servidor: `2026-11-09`.
+DateTime diaDeJson(Object? valor) => DateTime.parse(valor.toString());
+
 /// Escribe un día suelto como lo espera el servidor: `2026-11-09`.
 String diaAJson(DateTime dia) {
   final mes = dia.month.toString().padLeft(2, '0');
   final numero = dia.day.toString().padLeft(2, '0');
   return '${dia.year}-$mes-$numero';
-}
-
-/// Arma el par de colores de una categoría a partir de `#RRGGBB`.
-///
-/// Si coincide con uno de los [Pasteles] devuelve ese mismo objeto, para
-/// que el selector de color del formulario lo reconozca como elegido.
-ParDeColores coloresDeJson(Object? fondo, Object? tinta) {
-  final colorDeFondo = _colorDeJson(fondo);
-  final colorDeTinta = _colorDeJson(tinta);
-  if (colorDeFondo == null || colorDeTinta == null) return Pasteles.rosa;
-
-  for (final pastel in Pasteles.todos) {
-    if (pastel.fondo.toARGB32() == colorDeFondo.toARGB32() &&
-        pastel.tinta.toARGB32() == colorDeTinta.toARGB32()) {
-      return pastel;
-    }
-  }
-  return ParDeColores(fondo: colorDeFondo, tinta: colorDeTinta);
-}
-
-/// Escribe un color como lo espera el servidor: `#F9D3DE`.
-String colorAJson(Color color) {
-  final rgb = color.toARGB32() & 0xFFFFFF;
-  return '#${rgb.toRadixString(16).padLeft(6, '0').toUpperCase()}';
-}
-
-Color? _colorDeJson(Object? valor) {
-  final texto = valor?.toString().replaceFirst('#', '') ?? '';
-  final rgb = texto.length == 6 ? int.tryParse(texto, radix: 16) : null;
-  if (rgb == null) return null;
-
-  return Color(0xFF000000 | rgb);
 }

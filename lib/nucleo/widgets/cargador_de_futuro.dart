@@ -1,5 +1,4 @@
-import 'package:flutter/widgets.dart';
-import 'package:mi_puesto/datos/error_del_servidor.dart';
+import 'package:flutter/material.dart';
 import 'package:mi_puesto/nucleo/widgets/indicador_de_carga.dart';
 import 'package:mi_puesto/nucleo/widgets/mensaje_de_error.dart';
 
@@ -8,11 +7,15 @@ import 'package:mi_puesto/nucleo/widgets/mensaje_de_error.dart';
 /// datos llegan dibuja lo que devuelva [construir].
 ///
 /// ```dart
-/// CargadorDeFuturo<ResumenDelDia>(
-///   cargar: repositorio.obtenerResumenDeHoy,
-///   construir: (context, resumen) => Text('${resumen.numeroDeVentas}'),
+/// CargadorDeFuturo<VentasDelDia>(
+///   cargar: () => repositorio.obtenerVentasDelDia(hoy()),
+///   construir: (context, ventas) => Text('${ventas.cuantas}'),
 /// )
 /// ```
+///
+/// Para volver a pedir los datos (porque cambió la fecha, o porque se
+/// guardó algo), dale otra `key`: Flutter lo crea de nuevo y vuelve a
+/// llamar a [cargar].
 class CargadorDeFuturo<Dato> extends StatefulWidget {
   const CargadorDeFuturo({
     super.key,
@@ -44,13 +47,11 @@ class _EstadoDeCargador<Dato> extends State<CargadorDeFuturo<Dato>> {
       future: _carga,
       builder: (context, resultado) {
         if (resultado.hasError) {
-          final error = resultado.error;
           // Deja el error en la consola para quien esté programando.
-          debugPrint('No se pudo cargar: $error');
+          debugPrint('No se pudo cargar: ${resultado.error}');
 
           return MensajeDeError(
-            // Si el servidor explicó qué pasó, se muestra su explicación.
-            explicacion: error is ErrorDelServidor ? error.mensaje : null,
+            error: resultado.error,
             alReintentar: _reintentar,
           );
         }

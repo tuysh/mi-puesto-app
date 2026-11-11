@@ -21,7 +21,7 @@ class CampoEtiquetado extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: 6,
+      spacing: 8,
       children: [
         Text(etiqueta, style: Tipografia.texto(tamanoDeEtiqueta, peso: 800)),
         child,

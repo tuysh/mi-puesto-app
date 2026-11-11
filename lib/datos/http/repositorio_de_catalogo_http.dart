@@ -1,102 +1,68 @@
-import 'dart:math';
-
 import 'package:mi_puesto/datos/http/cliente_de_api.dart';
 import 'package:mi_puesto/datos/http/conversion_de_json.dart';
-import 'package:mi_puesto/datos/modelos/categoria.dart';
+import 'package:mi_puesto/datos/http/repositorio_de_categorias_http.dart';
+import 'package:mi_puesto/datos/modelos/catalogo.dart';
 import 'package:mi_puesto/datos/modelos/foto_nueva.dart';
+import 'package:mi_puesto/datos/modelos/presentacion.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/datos/repositorios/repositorios.dart';
 
-/// Categorías y productos, contra el servidor.
+/// Los productos y lo que se pinta al vender, contra el servidor.
 class RepositorioDeCatalogoHttp implements RepositorioDeCatalogo {
   RepositorioDeCatalogoHttp(this._api);
 
   final ClienteDeApi _api;
 
-  /// El lugar más alto que ocupa una categoría en la lista. Una categoría
-  /// nueva se manda con el siguiente, para que aparezca al final.
-  int _ordenMasAlto = -1;
-
   @override
-  Future<List<Categoria>> obtenerCategorias() async {
-    final lista = await _api.pedir(
-      'GET',
-      '${await _api.rutaDelPuesto()}/categorias',
+  Future<Catalogo> obtenerCatalogo() async {
+    final respuesta = await _api.pedir('GET', '/catalogo');
+
+    return Catalogo(
+      categorias: [
+        for (final categoria in respuesta['categorias'] as List)
+          categoriaDeJson(categoria),
+      ],
+      productos: [
+        for (final producto in respuesta['productos'] as List)
+          _productoDeJson(producto),
+      ],
     );
-
-    for (final categoria in lista as List) {
-      _ordenMasAlto = max(_ordenMasAlto, categoria['orden'] as int);
-    }
-    return [for (final categoria in lista) categoriaDeJson(categoria)];
-  }
-
-  @override
-  Future<Categoria> guardarCategoria(Categoria categoria) async {
-    final ruta = '${await _api.rutaDelPuesto()}/categorias';
-    final cuerpo = {
-      'nombre': categoria.nombre,
-      'emoji': categoria.emoji,
-      'color_fondo': colorAJson(categoria.colores.fondo),
-      'color_tinta': colorAJson(categoria.colores.tinta),
-    };
-
-    if (categoria.esNueva) {
-      final creada = await _api.pedir(
-        'POST',
-        ruta,
-        cuerpo: {...cuerpo, 'orden': _ordenMasAlto + 1},
-      );
-      _ordenMasAlto++;
-      return categoriaDeJson(creada);
-    }
-
-    final cambiada = await _api.pedir(
-      'PATCH',
-      '$ruta/${categoria.id}',
-      cuerpo: cuerpo,
-    );
-    return categoriaDeJson(cambiada);
-  }
-
-  @override
-  Future<void> eliminarCategoria(String categoriaId) async {
-    await _api.pedir(
-      'DELETE',
-      '${await _api.rutaDelPuesto()}/categorias/$categoriaId',
-    );
-  }
-
-  @override
-  Future<List<Producto>> obtenerProductos() async {
-    final lista = await _api.pedir(
-      'GET',
-      '${await _api.rutaDelPuesto()}/productos',
-    );
-    return [for (final producto in lista as List) _productoDeJson(producto)];
   }
 
   @override
   Future<Producto> guardarProducto(Producto producto) async {
-    final ruta = '${await _api.rutaDelPuesto()}/productos';
-    final cuerpo = {
-      'nombre': producto.nombre,
-      // Si el nombre corto es el mismo nombre, no hace falta guardarlo:
-      // el servidor lo limita a 24 letras y el nombre puede ser más largo.
-      'nombre_corto': producto.nombreCorto == producto.nombre
-          ? ''
-          : producto.nombreCorto,
-      'emoji': producto.emoji,
-      'letras': producto.letras,
-      'precio': dineroAJson(producto.precio),
-      'costo': dineroAJson(producto.costo),
-      'a_la_venta': producto.aLaVenta,
-      'categoria_id': idAJson(producto.categoriaId),
-    };
+    final cuerpo = _productoAJson(producto);
 
     final guardado = producto.esNuevo
-        ? await _api.pedir('POST', ruta, cuerpo: cuerpo)
-        : await _api.pedir('PATCH', '$ruta/${producto.id}', cuerpo: cuerpo);
+        ? await _api.pedir('POST', '/productos', cuerpo: cuerpo)
+        : await _api.pedir(
+            'PATCH',
+            '/productos/${producto.id}',
+            cuerpo: cuerpo,
+          );
     return _productoDeJson(guardado);
+  }
+
+  @override
+  Future<Producto> cambiarDisponibilidad(
+    String productoId,
+    bool disponible,
+  ) async {
+    final producto = await _api.pedir(
+      'PATCH',
+      '/productos/$productoId',
+      cuerpo: {'disponible': disponible},
+    );
+    return _productoDeJson(producto);
+  }
+
+  @override
+  Future<void> desactivarProducto(String productoId) async {
+    await _api.pedir(
+      'PATCH',
+      '/productos/$productoId',
+      cuerpo: {'activo': false},
+    );
   }
 
   @override
@@ -105,7 +71,7 @@ class RepositorioDeCatalogoHttp implements RepositorioDeCatalogo {
     FotoNueva foto,
   ) async {
     final producto = await _api.subirArchivo(
-      '${await _api.rutaDelPuesto()}/productos/$productoId/foto',
+      '/productos/$productoId/foto',
       campo: 'foto',
       bytes: foto.bytes,
       nombreDeArchivo: foto.nombreDeArchivo,
@@ -115,39 +81,68 @@ class RepositorioDeCatalogoHttp implements RepositorioDeCatalogo {
 
   @override
   Future<Producto> quitarFotoDeProducto(String productoId) async {
-    final producto = await _api.pedir(
-      'DELETE',
-      '${await _api.rutaDelPuesto()}/productos/$productoId/foto',
-    );
+    final producto = await _api.pedir('DELETE', '/productos/$productoId/foto');
     return _productoDeJson(producto);
   }
 
-  Producto _productoDeJson(dynamic json) {
-    final nombre = json['nombre'] as String;
-    final nombreCorto = json['nombre_corto'] as String? ?? '';
+  /// Lo que se manda al crear o cambiar un producto.
+  Map<String, Object?> _productoAJson(Producto producto) {
+    final categoriaId = producto.categoriaId;
 
+    return {
+      'nombre': producto.nombre,
+      'categoria_id': categoriaId == null ? null : idAJson(categoriaId),
+      'letras': producto.letras,
+      'emoji': producto.emoji,
+      // "imagen" no se manda: el servidor la pone solo al subir la foto.
+      if (producto.representacion != Representacion.imagen)
+        'representacion': producto.representacion.name,
+      // Un precio o tamaños, nunca los dos.
+      if (producto.tieneTamanos)
+        'presentaciones': [
+          for (final presentacion in producto.presentaciones)
+            {
+              // Con `id` el servidor actualiza ese tamaño; sin él, lo crea.
+              if (!presentacion.esNueva) 'id': idAJson(presentacion.id),
+              'nombre': presentacion.nombre,
+              'precio': dineroAJson(presentacion.precio),
+            },
+        ]
+      else
+        'precio': dineroAJson(producto.precio!),
+    };
+  }
+
+  Producto _productoDeJson(dynamic json) {
     return Producto(
       id: idDeJson(json['id']),
-      nombre: nombre,
-      nombreCorto: nombreCorto.isEmpty ? nombre : nombreCorto,
+      nombre: json['nombre'] as String,
+      categoriaId: idONadaDeJson(json['categoria_id']),
+      precio: dineroONadaDeJson(json['precio']),
+      presentaciones: [
+        // Viene sin esta llave cuando se piden solo algunos campos.
+        for (final presentacion in json['presentaciones'] as List? ?? [])
+          Presentacion(
+            id: idDeJson(presentacion['id']),
+            nombre: presentacion['nombre'] as String,
+            precio: dineroDeJson(presentacion['precio']),
+          ),
+      ],
+      representacion: representacionDeJson(json['representacion']),
       emoji: json['emoji'] as String? ?? '',
       letras: json['letras'] as String? ?? '',
-      fotoUrl: _api.direccionDeFoto(json['foto_url'] as String? ?? ''),
-      precio: dineroDeJson(json['precio']),
-      costo: dineroDeJson(json['costo']),
-      categoriaId: idDeJson(json['categoria_id']),
-      aLaVenta: json['a_la_venta'] as bool? ?? true,
+      imagenUrl: _api.direccionDeFoto(json['imagen_url'] as String? ?? ''),
+      disponible: json['disponible'] as bool? ?? true,
     );
   }
 }
 
-/// Arma una [Categoria] con lo que manda el servidor. También la usan los
-/// reportes, que necesitan los colores de cada categoría.
-Categoria categoriaDeJson(dynamic json) {
-  return Categoria(
-    id: idDeJson(json['id']),
-    nombre: json['nombre'] as String,
-    emoji: json['emoji'] as String? ?? '',
-    colores: coloresDeJson(json['color_fondo'], json['color_tinta']),
-  );
+/// Lee con qué se pinta un producto: `"imagen"`, `"emoji"` o `"letras"`.
+/// También lo usa el resumen, para "Lo más vendido".
+Representacion representacionDeJson(Object? valor) {
+  return switch (valor) {
+    'imagen' => Representacion.imagen,
+    'emoji' => Representacion.emoji,
+    _ => Representacion.letras,
+  };
 }

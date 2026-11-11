@@ -5,9 +5,8 @@ enum Destino {
   vender('Vender', Icons.shopping_cart_outlined),
   hoy('Hoy', Icons.wb_sunny_outlined),
   reportes('Reportes', Icons.bar_chart_rounded),
-  historial('Historial', Icons.receipt_long_outlined),
-  productos('Productos', Icons.inventory_2_outlined),
-  mas('Más', Icons.menu_rounded);
+  mas('Más', Icons.menu_rounded),
+  misVentas('Mis ventas', Icons.receipt_long_outlined);
 
   const Destino(this.etiqueta, this.icono);
 
@@ -15,20 +14,13 @@ enum Destino {
   final IconData icono;
 }
 
-/// En teléfono solo caben cuatro botones; Historial y Productos viven
-/// dentro de "Más".
-const destinosDeTelefono = [
+/// Lo que ve la dueña: todo. Lo que no es vender ni consultar vive en "Más".
+const destinosDeLaDuena = [
   Destino.vender,
   Destino.hoy,
   Destino.reportes,
   Destino.mas,
 ];
 
-/// En tablet el menú lateral muestra todas las secciones directamente.
-const destinosDeTablet = [
-  Destino.vender,
-  Destino.hoy,
-  Destino.reportes,
-  Destino.historial,
-  Destino.productos,
-];
+/// Lo que ve quien solo vende: dos pestañas, y nada más que sus ventas.
+const destinosDeQuienVende = [Destino.vender, Destino.misVentas];

@@ -2,20 +2,21 @@ import 'package:flutter/widgets.dart';
 import 'package:mi_puesto/app/dependencias.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/tesela_de_producto.dart';
+import 'package:mi_puesto/pantallas/vender/widgets/tesela_de_producto_en_tablet.dart';
 
-/// En teléfono: siempre tres columnas.
-const rejillaDeTelefono = SliverGridDelegateWithFixedCrossAxisCount(
-  crossAxisCount: 3,
+/// En teléfono: siempre dos columnas.
+const _rejillaDeTelefono = SliverGridDelegateWithFixedCrossAxisCount(
+  crossAxisCount: 2,
   mainAxisExtent: TeselaDeProducto.alto,
   crossAxisSpacing: 10,
   mainAxisSpacing: 10,
 );
 
-/// En tablet: tantas columnas como quepan, con teselas de no más de 170 de
-/// ancho (cinco columnas en una tablet de 8.7").
-const rejillaDeTablet = SliverGridDelegateWithMaxCrossAxisExtent(
-  maxCrossAxisExtent: 170,
-  mainAxisExtent: TeselaDeProducto.alto,
+/// En tablet: tantas columnas como quepan, con teselas de no más de 200 de
+/// ancho (cuatro columnas en una tablet de 8.7").
+const _rejillaDeTablet = SliverGridDelegateWithMaxCrossAxisExtent(
+  maxCrossAxisExtent: 200,
+  mainAxisExtent: TeselaDeProductoEnTablet.alto,
   crossAxisSpacing: 12,
   mainAxisSpacing: 12,
 );
@@ -25,21 +26,23 @@ class CuadriculaDeProductos extends StatelessWidget {
   const CuadriculaDeProductos({
     super.key,
     required this.productos,
-    required this.rejilla,
     required this.alTocarProducto,
     required this.relleno,
+    this.esDeTablet = false,
   });
 
   final List<Producto> productos;
 
-  /// Cómo se reparten las columnas: [rejillaDeTelefono] o [rejillaDeTablet].
-  final SliverGridDelegate rejilla;
-
+  /// Se llama al tocar un producto que sí hay hoy. Quien lo recibe decide
+  /// si suma una pieza o abre la hoja de tamaños.
   final ValueChanged<Producto> alTocarProducto;
 
-  /// Espacio alrededor de la cuadrícula. Debe dejar al menos 8 arriba y a la
-  /// derecha para que no se corte la insignia de cantidad.
+  /// Espacio alrededor de la cuadrícula. En tablet debe dejar al menos 8
+  /// arriba y a la derecha para que no se corte la insignia de cantidad.
   final EdgeInsets relleno;
+
+  /// Con `true` se usan las teselas y las columnas de tablet.
+  final bool esDeTablet;
 
   @override
   Widget build(BuildContext context) {
@@ -51,15 +54,29 @@ class CuadriculaDeProductos extends StatelessWidget {
       builder: (context, _) {
         return GridView.builder(
           padding: relleno,
-          gridDelegate: rejilla,
+          gridDelegate: esDeTablet ? _rejillaDeTablet : _rejillaDeTelefono,
           itemCount: productos.length,
           itemBuilder: (context, posicion) {
             final producto = productos[posicion];
+            final colores = dependencias.catalogo.coloresDe(
+              producto.categoriaId,
+            );
+            // Un producto con tamaños suma las piezas de todos ellos.
+            final cantidad = dependencias.pedido.piezasDe(producto);
+
+            if (esDeTablet) {
+              return TeselaDeProductoEnTablet(
+                producto: producto,
+                colores: colores,
+                cantidad: cantidad,
+                alTocar: () => alTocarProducto(producto),
+              );
+            }
 
             return TeselaDeProducto(
               producto: producto,
-              colores: dependencias.catalogo.categoriaDe(producto).colores,
-              cantidad: dependencias.pedido.cantidadDe(producto),
+              colores: colores,
+              cantidad: cantidad,
               alTocar: () => alTocarProducto(producto),
               alQuitar: () => dependencias.pedido.quitar(producto),
             );

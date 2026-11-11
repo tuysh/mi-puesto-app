@@ -1,30 +1,18 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:mi_puesto/app/dependencias.dart';
-import 'package:mi_puesto/nucleo/avisos.dart';
+import 'package:mi_puesto/nucleo/navegacion.dart';
 import 'package:mi_puesto/pantallas/vender/widgets/aviso_de_venta_registrada.dart';
+import 'package:mi_puesto/pantallas/ventas/pantalla_de_detalle_de_venta.dart';
 
 /// Muestra el aviso de "Venta registrada" mientras haya una venta recién
 /// hecha. El aviso se queda hasta cerrarlo o empezar otro pedido.
 class AvisoDeUltimaVenta extends StatelessWidget {
   const AvisoDeUltimaVenta({super.key});
 
-  Future<void> _corregir(BuildContext context) async {
-    try {
-      await Dependencias.de(context).ventas.corregirUltimaVenta();
-    } catch (error) {
-      if (context.mounted) {
-        mostrarAvisoDeError(
-          context,
-          error,
-          siNoHayExplicacion: 'No se pudo corregir la venta',
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final ventas = Dependencias.de(context).ventas;
+    final dependencias = Dependencias.de(context);
+    final ventas = dependencias.ventas;
 
     return ListenableBuilder(
       listenable: ventas,
@@ -35,7 +23,13 @@ class AvisoDeUltimaVenta extends StatelessWidget {
         return AvisoDeVentaRegistrada(
           venta: venta,
           alCerrar: ventas.cerrarAviso,
-          alCorregir: () => _corregir(context),
+          // Solo la dueña puede corregir una venta.
+          alVerOCorregir: dependencias.sesion.esDuena
+              ? () => abrirPantalla(
+                  context,
+                  PantallaDeDetalleDeVenta(ventaId: venta.id),
+                )
+              : null,
         );
       },
     );

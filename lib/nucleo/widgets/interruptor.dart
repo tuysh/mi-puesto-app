@@ -28,20 +28,28 @@ class Interruptor extends StatelessWidget {
       label: etiqueta,
       child: GestureDetector(
         onTap: () => alCambiar(!activo),
-        child: AnimatedContainer(
-          duration: _duracion,
-          width: 52,
-          height: 30,
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            color: activo ? Colores.exito.tinta : Colores.bordePunteado,
-            borderRadius: BorderRadius.circular(Radios.pildora),
-          ),
-          // La perilla blanca se desliza a la derecha al encender.
-          child: AnimatedAlign(
+        // El interruptor mide 52 × 30, pero responde en una zona de 60 × 44
+        // para que sea fácil de atinar con el dedo.
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          width: 60,
+          height: 44,
+          alignment: Alignment.centerRight,
+          child: AnimatedContainer(
             duration: _duracion,
-            alignment: activo ? Alignment.centerRight : Alignment.centerLeft,
-            child: const _Perilla(),
+            width: 52,
+            height: 30,
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: activo ? Colores.exito.tinta : Colores.bordeDeCampo,
+              borderRadius: BorderRadius.circular(Radios.pildora),
+            ),
+            // La perilla blanca se desliza a la derecha al encender.
+            child: AnimatedAlign(
+              duration: _duracion,
+              alignment: activo ? Alignment.centerRight : Alignment.centerLeft,
+              child: const _Perilla(),
+            ),
           ),
         ),
       ),

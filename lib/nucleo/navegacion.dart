@@ -11,8 +11,14 @@ void reemplazarPantalla(BuildContext context, Widget pantalla) {
 }
 
 /// Cierra todas las pantallas abiertas y deja solo [pantalla].
+///
+/// Usa el navegador de hasta arriba (`rootNavigator`): en tablet la sección
+/// "Más" tiene su propio navegador, y sin esto solo se cambiaría esa parte.
 void reemplazarTodasLasPantallas(BuildContext context, Widget pantalla) {
-  Navigator.of(context).pushAndRemoveUntil(_ruta(pantalla), (ruta) => false);
+  Navigator.of(
+    context,
+    rootNavigator: true,
+  ).pushAndRemoveUntil(_ruta(pantalla), (ruta) => false);
 }
 
 /// Cierra la pantalla, hoja o diálogo actual.

@@ -14,11 +14,22 @@ class ImagenElegida {
   });
 
   /// La imagen que [producto] ya tiene guardada.
-  ImagenElegida.de(Producto producto)
-    : emoji = producto.emoji,
-      letras = producto.letras,
-      fotoUrl = producto.fotoUrl,
-      fotoNueva = null;
+  ///
+  /// El servidor guarda las tres cosas, pero solo una se pinta
+  /// (`representacion`); aquí se dejan pasar nada más las que hacen falta.
+  factory ImagenElegida.de(Producto producto) {
+    return switch (producto.representacion) {
+      // El emoji y las letras se conservan: son lo que se ve si la foto no
+      // carga.
+      Representacion.imagen => ImagenElegida(
+        emoji: producto.emoji,
+        letras: producto.letras,
+        fotoUrl: producto.imagenUrl,
+      ),
+      Representacion.emoji => ImagenElegida(emoji: producto.emoji),
+      Representacion.letras => ImagenElegida(letras: producto.letras),
+    };
+  }
 
   final String emoji;
   final String letras;
@@ -30,4 +41,11 @@ class ImagenElegida {
   final FotoNueva? fotoNueva;
 
   bool get tieneFoto => fotoNueva != null || fotoUrl.isNotEmpty;
+
+  /// Con cuál de las tres cosas se va a pintar el producto.
+  Representacion get representacion {
+    if (tieneFoto) return Representacion.imagen;
+    if (emoji.isNotEmpty) return Representacion.emoji;
+    return Representacion.letras;
+  }
 }

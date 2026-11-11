@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
-import 'package:mi_puesto/nucleo/tema/medidas.dart';
 import 'package:mi_puesto/nucleo/tema/sombras.dart';
 import 'package:mi_puesto/nucleo/widgets/caja_tocable.dart';
 
-/// Un cuadro grande que se toca para cambiar lo que muestra (el emoji de
-/// una categoría, la imagen de un producto). El lapicito de la esquina
-/// avisa que se puede tocar.
+/// Un cuadro que se toca para cambiar lo que muestra (la imagen de un
+/// producto). El lapicito de la esquina avisa que se puede tocar.
 class BotonConLapiz extends StatelessWidget {
   const BotonConLapiz({
     super.key,
@@ -14,6 +12,7 @@ class BotonConLapiz extends StatelessWidget {
     required this.etiqueta,
     required this.fondo,
     required this.alTocar,
+    this.tamano = 58,
   });
 
   /// Lo que se ve dentro del cuadro.
@@ -25,7 +24,8 @@ class BotonConLapiz extends StatelessWidget {
   final Color fondo;
   final VoidCallback alTocar;
 
-  static const tamano = 72.0;
+  /// Lado del cuadro.
+  final double tamano;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +36,7 @@ class BotonConLapiz extends StatelessWidget {
         CajaTocable(
           alTocar: alTocar,
           etiqueta: etiqueta,
-          radio: Radios.tarjeta,
+          radio: tamano / 3,
           decoracion: BoxDecoration(
             color: fondo,
             boxShadow: Sombras.dura(alto: 3),

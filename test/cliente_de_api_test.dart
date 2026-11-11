@@ -6,40 +6,76 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mi_puesto/controladores/controlador_de_catalogo.dart';
+import 'package:mi_puesto/controladores/sesion.dart';
 import 'package:mi_puesto/datos/conexiones.dart';
 import 'package:mi_puesto/datos/error_del_servidor.dart';
-import 'package:mi_puesto/datos/http/almacen_de_sesion.dart';
 import 'package:mi_puesto/datos/http/almacen_de_sesion_en_memoria.dart';
 import 'package:mi_puesto/datos/http/conversion_de_json.dart';
 import 'package:mi_puesto/datos/modelos/dinero.dart';
 import 'package:mi_puesto/datos/modelos/estado_de_acceso.dart';
 import 'package:mi_puesto/datos/modelos/foto_nueva.dart';
-import 'package:mi_puesto/datos/modelos/linea_de_pedido.dart';
+import 'package:mi_puesto/datos/modelos/presentacion.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
-import 'package:mi_puesto/datos/modelos/vendedor.dart';
-import 'package:mi_puesto/nucleo/tema/colores.dart';
+import 'package:mi_puesto/datos/modelos/resumen.dart';
+import 'package:mi_puesto/datos/modelos/venta.dart';
 
-/// Prueba la conexión con el servidor sin usar la red: un servidor de
-/// mentira contesta lo que cada prueba le indica.
+/// Prueba la conexión con el servidor (API v2) sin usar la red: un
+/// servidor de mentira contesta lo que cada prueba le indica.
 void main() {
-  const sesionGuardada = SesionGuardada(token: 'abc', puestoId: '7');
-  const vendedor = Vendedor(id: '1', nombre: 'Mari', colores: Pasteles.rosa);
-  const pay = Producto(
-    id: '2',
-    nombre: 'Pay de limón',
-    nombreCorto: 'Pay limón',
-    emoji: '🥧',
-    precio: Dinero.pesos(45),
-    costo: Dinero.pesos(18),
-    categoriaId: '1',
-  );
-
   http.Response json(Object cuerpo, [int codigo = 200]) {
     return http.Response.bytes(
       utf8.encode(jsonEncode(cuerpo)),
       codigo,
       headers: {'content-type': 'application/json'},
     );
+  }
+
+  /// Conexiones con un token ya guardado (`abc`) que responden lo que diga
+  /// [responder].
+  Conexiones conectar(
+    Future<http.Response> Function(http.Request peticion) responder, {
+    AlmacenDeSesionEnMemoria? almacen,
+  }) {
+    return Conexiones.http(
+      urlDelServidor: 'https://servidor.prueba',
+      almacen: almacen ?? AlmacenDeSesionEnMemoria('abc'),
+      cliente: MockClient(responder),
+    );
+  }
+
+  /// Lo que responden el login, `/cuenta` y las rutas del PIN.
+  Map<String, Object?> cuenta({Object? perfil}) {
+    return {
+      'negocio': {
+        'id': 1,
+        'nombre': 'Puesto Doña Mari',
+        'email': 'mari@ejemplo.com',
+      },
+      'perfil': perfil,
+      'perfiles': [
+        {'id': 1, 'nombre': 'Mari', 'rol': 'dueno', 'color': 0},
+        {'id': 2, 'nombre': 'Lupe', 'rol': 'vendedor', 'color': 1},
+      ],
+    };
+  }
+
+  /// Un producto como lo manda el servidor.
+  Map<String, Object?> producto({String imagenUrl = ''}) {
+    return {
+      'id': 10,
+      'nombre': 'Horchata',
+      'categoria_id': 3,
+      'precio': null,
+      'representacion': imagenUrl.isEmpty ? 'emoji' : 'imagen',
+      'letras': 'Ho',
+      'emoji': '🥛',
+      'disponible': true,
+      'imagen_url': imagenUrl,
+      'presentaciones': [
+        {'id': 1, 'nombre': 'Chica', 'precio': '15.00'},
+        {'id': 2, 'nombre': 'Grande', 'precio': '25.00'},
+      ],
+    };
   }
 
   group('dinero', () {
@@ -49,6 +85,7 @@ void main() {
       expect(dineroDeJson('1234.5'), const Dinero.centavos(123450));
       expect(dineroDeJson('-35.05'), const Dinero.centavos(-3505));
       expect(dineroDeJson(null), Dinero.cero);
+      expect(dineroONadaDeJson(null), isNull);
     });
 
     test('se escribe con dos decimales', () {
@@ -58,89 +95,145 @@ void main() {
     });
   });
 
-  test('los colores van y vienen como #RRGGBB', () {
-    expect(colorAJson(Pasteles.rosa.fondo), '#F9D3DE');
-    expect(
-      identical(coloresDeJson('#F9D3DE', '#8A2149'), Pasteles.rosa),
-      isTrue,
-    );
-    expect(coloresDeJson('#102030', '#FFFFFF').fondo.toARGB32(), 0xFF102030);
-  });
-
   test('iniciar sesión guarda el token y lo manda en lo que sigue', () async {
     final almacen = AlmacenDeSesionEnMemoria();
     final peticiones = <http.Request>[];
-    final conexiones = Conexiones.http(
-      urlDelServidor: 'https://servidor.prueba',
-      almacen: almacen,
-      cliente: MockClient((peticion) async {
-        peticiones.add(peticion);
-        if (peticion.url.path == '/api/v1/cuenta/login') {
-          return json({
-            'token': 'tok-1',
-            'puestos': [
-              {'id': 7, 'nombre': 'Puesto Doña Mari', 'tiene_pin': true},
-            ],
-          });
-        }
-        return http.Response('', 204);
-      }),
-    );
+    final conexiones = conectar(almacen: almacen, (peticion) async {
+      peticiones.add(peticion);
+      if (peticion.url.path == '/api/v2/cuenta/login') {
+        return json({'token': 'tok-1', ...cuenta()});
+      }
+      return json(
+        cuenta(perfil: {'id': 2, 'nombre': 'Lupe', 'rol': 'vendedor'}),
+      );
+    });
 
-    final entro = await conexiones.sesion.iniciarSesion(
+    final alEntrar = await conexiones.sesion.iniciarSesion(
       correo: 'mari@ejemplo.com',
       contrasena: 'pay-de-limon',
     );
-    expect(entro, isTrue);
-    expect((await almacen.leer())!.token, 'tok-1');
+    expect(alEntrar!.negocio.nombre, 'Puesto Doña Mari');
+    expect(alEntrar.perfilActivo, isNull);
+    expect(alEntrar.perfiles.first.esDueno, isTrue);
+    expect(await almacen.leerToken(), 'tok-1');
     expect(peticiones.single.headers.containsKey('Authorization'), isFalse);
     expect(jsonDecode(peticiones.single.body), {
       'email': 'mari@ejemplo.com',
       'password': 'pay-de-limon',
     });
 
-    expect(await conexiones.sesion.validarPin('0123'), isTrue);
-    final verificar = peticiones.last;
-    expect(verificar.url.path, '/api/v1/puestos/7/pin/verificar');
-    expect(verificar.headers['Authorization'], 'Bearer tok-1');
-    expect(verificar.headers['Content-Type'], startsWith('application/json'));
-    expect(jsonDecode(verificar.body), {'pin': '0123'});
+    // El PIN viaja como texto, para no perder los ceros de adelante.
+    final conLupe = await conexiones.sesion.entrarComoPerfil(
+      perfilId: '2',
+      pin: '0123',
+    );
+    expect(conLupe!.perfilActivo!.nombre, 'Lupe');
+    final entrar = peticiones.last;
+    expect(entrar.url.path, '/api/v2/perfiles/2/entrar');
+    expect(entrar.headers['Authorization'], 'Bearer tok-1');
+    expect(entrar.headers['Content-Type'], startsWith('application/json'));
+    expect(jsonDecode(entrar.body), {'pin': '0123'});
+  });
+
+  test('la cuenta dice en qué paso va el dispositivo', () async {
+    Object? respuesta = cuenta();
+    final conexiones = conectar((peticion) async => json(respuesta!));
+    final sesion = Sesion(conexiones.sesion);
+
+    expect(await sesion.consultarAcceso(), EstadoDeAcceso.faltaElegirPersona);
+
+    respuesta = cuenta(perfil: {'id': 1, 'nombre': 'Mari', 'rol': 'dueno'});
+    expect(await sesion.consultarAcceso(), EstadoDeAcceso.dentro);
+    expect(sesion.esDuena, isTrue);
+
+    // El registro quedó a medias: hay cuenta, pero todavía no hay dueña.
+    respuesta = {...cuenta(), 'perfiles': <Object>[]};
+    expect(await sesion.consultarAcceso(), EstadoDeAcceso.faltaLaDuena);
+  });
+
+  test('una contraseña incorrecta no es un error: se devuelve null', () async {
+    var respuesta = json({
+      'detail': 'Correo o contraseña incorrectos.',
+      'codigo': 'credenciales',
+    }, 401);
+    final conexiones = conectar(
+      almacen: AlmacenDeSesionEnMemoria(),
+      (peticion) async => respuesta,
+    );
+
+    final sinEntrar = await conexiones.sesion.iniciarSesion(
+      correo: 'mari@ejemplo.com',
+      contrasena: 'otra',
+    );
+    expect(sinEntrar, isNull);
   });
 
   test('el PIN: 403 es incorrecto y 429 es bloqueado', () async {
-    var codigo = 403;
-    final conexiones = Conexiones.http(
-      urlDelServidor: 'https://servidor.prueba',
-      almacen: AlmacenDeSesionEnMemoria(sesionGuardada),
-      cliente: MockClient(
-        (peticion) async => json({'detail': 'PIN incorrecto.'}, codigo),
+    var respuesta = json({
+      'detail': 'PIN incorrecto.',
+      'codigo': 'pin_incorrecto',
+    }, 403);
+    final conexiones = conectar((peticion) async => respuesta);
+
+    final sinEntrar = await conexiones.sesion.entrarComoPerfil(
+      perfilId: '2',
+      pin: '9999',
+    );
+    expect(sinEntrar, isNull);
+
+    respuesta = json({'detail': 'Demasiados intentos.'}, 429);
+    await expectLater(
+      conexiones.sesion.entrarComoPerfil(perfilId: '2', pin: '9999'),
+      throwsA(
+        isA<ErrorDelServidor>()
+            .having((e) => e.codigoHttp, 'codigoHttp', 429)
+            .having((e) => e.mensaje, 'mensaje', contains('5 minutos')),
       ),
     );
+  });
 
-    expect(await conexiones.sesion.validarPin('9999'), isFalse);
-    codigo = 429;
+  test('de un error se muestra `detail` y se conserva su `codigo`', () async {
+    final conexiones = conectar(
+      (peticion) async => json({
+        'detail': 'La caja está cerrada. Ábrela para poder registrar.',
+        'codigo': 'sin_caja',
+      }, 409),
+    );
+
     await expectLater(
-      conexiones.sesion.validarPin('9999'),
-      throwsA(isA<ErrorDelServidor>().having((e) => e.codigo, 'codigo', 429)),
+      conexiones.ventas.registrarVenta(
+        lineas: const [LineaPorCobrar(productoId: '6', cantidad: 1)],
+        metodoDePago: MetodoDePago.efectivo,
+      ),
+      throwsA(
+        isA<ErrorDelServidor>()
+            .having((e) => e.codigo, 'codigo', CodigosDeError.sinCaja)
+            .having(
+              (e) => e.mensaje,
+              'mensaje',
+              'La caja está cerrada. Ábrela para poder registrar.',
+            ),
+      ),
     );
   });
 
   test('los errores por campo se juntan en un solo mensaje', () async {
-    final conexiones = Conexiones.http(
-      urlDelServidor: 'https://servidor.prueba',
+    final conexiones = conectar(
       almacen: AlmacenDeSesionEnMemoria(),
-      cliente: MockClient(
-        (peticion) async => json({
-          'password': [
-            'Esta contraseña es muy común.',
-            'Esta contraseña es totalmente numérica.',
-          ],
-        }, 400),
-      ),
+      (peticion) async => json({
+        'password': [
+          'Esta contraseña es muy común.',
+          'Esta contraseña es totalmente numérica.',
+        ],
+      }, 400),
     );
 
     await expectLater(
-      conexiones.sesion.crearCuenta(correo: 'a@b.mx', contrasena: '12345678'),
+      conexiones.sesion.crearCuenta(
+        nombreDelNegocio: 'Puesto',
+        correo: 'a@b.mx',
+        contrasena: '12345678',
+      ),
       throwsA(
         isA<ErrorDelServidor>().having(
           (e) => e.mensaje,
@@ -152,140 +245,213 @@ void main() {
     );
   });
 
-  test('un 401 borra la sesión y avisa para volver a iniciar', () async {
-    final almacen = AlmacenDeSesionEnMemoria(sesionGuardada);
-    final conexiones = Conexiones.http(
-      urlDelServidor: 'https://servidor.prueba',
+  test('un 401 borra el token y avisa para volver a iniciar', () async {
+    final almacen = AlmacenDeSesionEnMemoria('abc');
+    final conexiones = conectar(
       almacen: almacen,
-      cliente: MockClient(
-        (peticion) async => json({'detail': 'Token inválido.'}, 401),
-      ),
+      (peticion) async => json({'detail': 'Token inválido.'}, 401),
     );
     var avisos = 0;
     conexiones.sesion.avisarSiSePierdeLaSesion(() => avisos++);
 
     await expectLater(
-      conexiones.vendedores.obtenerVendedores(),
+      conexiones.catalogo.obtenerCatalogo(),
       throwsA(isA<ErrorDelServidor>()),
     );
     expect(avisos, 1);
-    expect(await almacen.leer(), isNull);
+    expect(await almacen.leerToken(), isNull);
 
     // Al abrir la aplicación con un token vencido no se avisa: la pantalla
     // de arranque ya manda a "Inicia sesión".
-    await almacen.guardar(sesionGuardada);
-    final otras = Conexiones.http(
-      urlDelServidor: 'https://servidor.prueba',
+    await almacen.guardarToken('abc');
+    final otras = conectar(
       almacen: almacen,
-      cliente: MockClient((peticion) async => json({'detail': 'x'}, 401)),
+      (peticion) async => json({'detail': 'x'}, 401),
     );
     otras.sesion.avisarSiSePierdeLaSesion(() => avisos++);
-    expect(await otras.sesion.consultarAcceso(), EstadoDeAcceso.sinSesion);
+    expect(await otras.sesion.consultarCuenta(), isNull);
     expect(avisos, 1);
+  });
+
+  test('"sin_perfil" avisa para volver a "¿Quién vende hoy?"', () async {
+    final conexiones = conectar(
+      (peticion) async => json({
+        'detail': 'Escribe tu PIN para continuar.',
+        'codigo': 'sin_perfil',
+      }, 403),
+    );
+    var avisos = 0;
+    conexiones.sesion.avisarSiNoHayNadieDentro(() => avisos++);
+
+    await expectLater(
+      conexiones.catalogo.obtenerCatalogo(),
+      throwsA(isA<ErrorDelServidor>()),
+    );
+    expect(avisos, 1);
+  });
+
+  test('sin red, el error es de conexión', () async {
+    final conexiones = conectar(
+      (peticion) async => throw const SocketException('sin señal'),
+    );
+
+    await expectLater(
+      conexiones.caja.obtenerCajaAbierta(),
+      throwsA(isA<ErrorDeConexion>()),
+    );
+  });
+
+  test('el catálogo trae productos con un precio o con tamaños', () async {
+    final conexiones = conectar((peticion) async {
+      expect(peticion.url.path, '/api/v2/catalogo');
+      return json({
+        'categorias': [
+          {'id': 3, 'nombre': 'Bebidas', 'color': 2, 'orden': 0},
+        ],
+        'productos': [
+          producto(),
+          {
+            'id': 1,
+            'nombre': 'Pay limón',
+            'categoria_id': null,
+            'precio': '45.00',
+            'representacion': 'letras',
+            'letras': 'Pa',
+            'emoji': '',
+            'disponible': false,
+            'imagen_url': '',
+            'presentaciones': <Object>[],
+          },
+        ],
+      });
+    });
+
+    final catalogo = await conexiones.catalogo.obtenerCatalogo();
+    final horchata = catalogo.productos[0];
+    final pay = catalogo.productos[1];
+
+    expect(catalogo.categorias.single.color, 2);
+    expect(horchata.precio, isNull);
+    expect(horchata.tieneTamanos, isTrue);
+    expect(horchata.precioDesde, const Dinero.pesos(15));
+    expect(horchata.representacion, Representacion.emoji);
+    expect(pay.precio, const Dinero.pesos(45));
+    expect(pay.categoriaId, isNull);
+    expect(pay.disponible, isFalse);
+  });
+
+  test('al guardar se manda un precio o los tamaños, nunca los dos', () async {
+    final cuerpos = <Map<String, dynamic>>[];
+    final conexiones = conectar((peticion) async {
+      cuerpos.add(jsonDecode(peticion.body) as Map<String, dynamic>);
+      return json(producto());
+    });
+
+    await conexiones.catalogo.guardarProducto(
+      const Producto(
+        id: '10',
+        nombre: 'Horchata',
+        categoriaId: '3',
+        precio: null,
+        representacion: Representacion.emoji,
+        emoji: '🥛',
+        presentaciones: [
+          // El que ya existía lleva su `id`; el nuevo, no.
+          Presentacion(id: '1', nombre: 'Chica', precio: Dinero.pesos(15)),
+          Presentacion(id: '', nombre: 'Jarra', precio: Dinero.pesos(60)),
+        ],
+      ),
+    );
+    expect(cuerpos.single.containsKey('precio'), isFalse);
+    expect(cuerpos.single['representacion'], 'emoji');
+    expect(cuerpos.single['presentaciones'], [
+      {'id': 1, 'nombre': 'Chica', 'precio': '15.00'},
+      {'nombre': 'Jarra', 'precio': '60.00'},
+    ]);
+
+    // Un producto nuevo, sin categoría, a un solo precio y con foto: la
+    // representación "imagen" no se manda (la pone el servidor al subirla).
+    await conexiones.catalogo.guardarProducto(
+      const Producto(
+        id: '',
+        nombre: 'Tostilocos',
+        categoriaId: null,
+        precio: Dinero.pesos(45),
+        representacion: Representacion.imagen,
+      ),
+    );
+    expect(cuerpos.last['precio'], '45.00');
+    expect(cuerpos.last['categoria_id'], isNull);
+    expect(cuerpos.last.containsKey('presentaciones'), isFalse);
+    expect(cuerpos.last.containsKey('representacion'), isFalse);
   });
 
   test('la foto se sube aparte, como archivo y con el token', () async {
     final peticiones = <http.Request>[];
-    final conexiones = Conexiones.http(
-      urlDelServidor: 'https://servidor.prueba',
-      almacen: AlmacenDeSesionEnMemoria(sesionGuardada),
-      cliente: MockClient((peticion) async {
-        peticiones.add(peticion);
-        return json({
-          'id': 2,
-          'nombre': 'Pay de limón',
-          'nombre_corto': 'Pay limón',
-          'emoji': '',
-          'letras': 'PL',
-          // En desarrollo la dirección llega sin el inicio.
-          'foto_url': peticion.method == 'PUT' ? '/media/puestos/7/a.webp' : '',
-          'precio': '45.00',
-          'costo': '18.00',
-          'a_la_venta': true,
-          'categoria_id': 1,
-        });
-      }),
-    );
+    final conexiones = conectar((peticion) async {
+      peticiones.add(peticion);
+      // En desarrollo la dirección llega sin el inicio.
+      return json(
+        producto(imagenUrl: peticion.method == 'PUT' ? '/media/a.webp' : ''),
+      );
+    });
 
     final conFoto = await conexiones.catalogo.subirFotoDeProducto(
-      '2',
+      '10',
       FotoNueva(
         bytes: Uint8List.fromList([1, 2, 3]),
-        nombreDeArchivo: 'pay.jpg',
+        nombreDeArchivo: 'horchata.jpg',
       ),
     );
     final subida = peticiones.single;
     expect(subida.method, 'PUT');
-    expect(subida.url.path, '/api/v1/puestos/7/productos/2/foto');
+    expect(subida.url.path, '/api/v2/productos/10/foto');
     expect(subida.headers['Authorization'], 'Bearer abc');
     expect(subida.headers['content-type'], startsWith('multipart/form-data'));
-    expect(subida.body, contains('name="foto"; filename="pay.jpg"'));
-    expect(conFoto.fotoUrl, 'https://servidor.prueba/media/puestos/7/a.webp');
-    expect(conFoto.letras, 'PL');
+    expect(subida.body, contains('name="foto"; filename="horchata.jpg"'));
+    expect(conFoto.representacion, Representacion.imagen);
+    expect(conFoto.imagenUrl, 'https://servidor.prueba/media/a.webp');
 
-    final sinFoto = await conexiones.catalogo.quitarFotoDeProducto('2');
+    final sinFoto = await conexiones.catalogo.quitarFotoDeProducto('10');
     expect(peticiones.last.method, 'DELETE');
-    expect(sinFoto.fotoUrl, isEmpty);
-
-    // Las letras viajan con el producto; la foto no.
-    await conexiones.catalogo.guardarProducto(
-      pay.copiarCon(emoji: '', letras: 'PL', fotoUrl: 'https://x/y.webp'),
-    );
-    final cuerpo = jsonDecode(peticiones.last.body) as Map<String, dynamic>;
-    expect(cuerpo['letras'], 'PL');
-    expect(cuerpo['emoji'], '');
-    expect(cuerpo.containsKey('foto_url'), isFalse);
+    expect(sinFoto.imagenUrl, isEmpty);
   });
 
   test(
     'al guardar con foto nueva vale la dirección que responde el PUT',
     () async {
-      Map<String, Object> producto(String fotoUrl) => {
-        'id': 2,
-        'nombre': 'Pay de limón',
-        'nombre_corto': 'Pay limón',
-        'emoji': '🥧',
-        'letras': '',
-        'foto_url': fotoUrl,
-        'precio': '45.00',
-        'costo': '18.00',
-        'a_la_venta': true,
-        'categoria_id': 1,
-      };
       final metodos = <String>[];
-      final conexiones = Conexiones.http(
-        urlDelServidor: 'https://servidor.prueba',
-        almacen: AlmacenDeSesionEnMemoria(sesionGuardada),
-        cliente: MockClient((peticion) async {
-          metodos.add(peticion.method);
-          if (peticion.url.path.endsWith('/categorias')) return json([]);
-          return switch (peticion.method) {
-            // La lista y el PATCH todavía traen la foto de antes…
-            'GET' => json([producto('https://fotos.prueba/vieja.webp')]),
-            'PATCH' => json(producto('https://fotos.prueba/vieja.webp')),
-            // …y el PUT estrena dirección; la vieja deja de existir.
-            _ => json(producto('https://fotos.prueba/nueva.webp')),
-          };
-        }),
-      );
+      final conexiones = conectar((peticion) async {
+        metodos.add(peticion.method);
+        return switch (peticion.method) {
+          // El catálogo y el PATCH todavía traen la foto de antes…
+          'GET' => json({
+            'categorias': <Object>[],
+            'productos': [producto(imagenUrl: 'https://fotos.prueba/v.webp')],
+          }),
+          'PATCH' => json(producto(imagenUrl: 'https://fotos.prueba/v.webp')),
+          // …y el PUT estrena dirección; la vieja deja de existir.
+          _ => json(producto(imagenUrl: 'https://fotos.prueba/n.webp')),
+        };
+      });
       final catalogo = ControladorDeCatalogo(conexiones.catalogo);
       await catalogo.cargar();
       final antes = catalogo.productos.single;
-      expect(antes.fotoUrl, 'https://fotos.prueba/vieja.webp');
+      expect(antes.imagenUrl, 'https://fotos.prueba/v.webp');
 
       final guardado = await catalogo.guardarProducto(
-        antes.copiarCon(fotoUrl: ''),
+        antes,
         fotoNueva: FotoNueva(
           bytes: Uint8List.fromList([1, 2, 3]),
-          nombreDeArchivo: 'pay.jpg',
+          nombreDeArchivo: 'horchata.jpg',
         ),
       );
 
-      expect(metodos, ['GET', 'GET', 'PATCH', 'PUT']);
-      expect(guardado.fotoUrl, 'https://fotos.prueba/nueva.webp');
+      expect(metodos, ['GET', 'PATCH', 'PUT']);
+      expect(guardado.imagenUrl, 'https://fotos.prueba/n.webp');
       expect(
-        catalogo.productos.single.fotoUrl,
-        'https://fotos.prueba/nueva.webp',
+        catalogo.productos.single.imagenUrl,
+        'https://fotos.prueba/n.webp',
       );
     },
   );
@@ -293,50 +459,84 @@ void main() {
   test('una venta sin respuesta se reintenta con el mismo uuid', () async {
     final cuerpos = <Map<String, dynamic>>[];
     var hayRed = false;
-    final conexiones = Conexiones.http(
-      urlDelServidor: 'https://servidor.prueba',
-      almacen: AlmacenDeSesionEnMemoria(sesionGuardada),
-      cliente: MockClient((peticion) async {
-        cuerpos.add(jsonDecode(peticion.body) as Map<String, dynamic>);
-        if (!hayRed) throw const SocketException('sin señal');
-        return json({
-          'id': 4,
-          'creada_en': '2026-11-09T23:57:56.976779Z',
-          'total': '90.00',
-          'pago_con': cuerpos.last['pago_con'] == null ? null : '100.00',
-        }, 201);
-      }),
-    );
+    final conexiones = conectar((peticion) async {
+      cuerpos.add(jsonDecode(peticion.body) as Map<String, dynamic>);
+      if (!hayRed) throw const SocketException('sin señal');
+      return json({
+        'id': 4,
+        'uuid': cuerpos.last['uuid'],
+        'creada_en': '2026-11-11T00:02:38.352483Z',
+        'perfil_id': 1,
+        'caja_id': 1,
+        'metodo_pago': 'efectivo',
+        'total': '110.00',
+        'monto_recibido': '200.00',
+        'cambio': '90.00',
+        'nota': 'Sin hielo',
+        'editada_en': null,
+        'cancelada_en': null,
+        'cancelada_por_id': null,
+        'lineas': [
+          {
+            'producto_id': 6,
+            'presentacion_id': null,
+            'nombre_producto': 'Esquite',
+            'nombre_presentacion': '',
+            'cantidad': 1,
+            'precio_unitario': '35.00',
+            'subtotal': '35.00',
+          },
+          {
+            'producto_id': 10,
+            'presentacion_id': 2,
+            'nombre_producto': 'Horchata',
+            'nombre_presentacion': 'Grande',
+            'cantidad': 3,
+            'precio_unitario': '25.00',
+            'subtotal': '75.00',
+          },
+        ],
+      }, 201);
+    });
 
-    Future<Object> vender(int piezas, Dinero pagoCon) {
+    Future<Venta> vender({Dinero? montoRecibido}) {
       return conexiones.ventas.registrarVenta(
-        lineas: [LineaDePedido(producto: pay, cantidad: piezas)],
-        pagoCon: pagoCon,
-        vendedor: vendedor,
+        lineas: const [
+          LineaPorCobrar(productoId: '6', cantidad: 1),
+          LineaPorCobrar(productoId: '10', presentacionId: '2', cantidad: 3),
+        ],
+        metodoDePago: MetodoDePago.efectivo,
+        montoRecibido: montoRecibido,
+        nota: 'Sin hielo',
       );
     }
 
     await expectLater(
-      vender(2, const Dinero.pesos(100)),
-      throwsA(isA<ErrorDelServidor>()),
+      vender(montoRecibido: const Dinero.pesos(200)),
+      throwsA(isA<ErrorDeConexion>()),
     );
     hayRed = true;
-    final venta = await vender(2, const Dinero.pesos(100));
-    expect(venta, isNotNull);
-    expect(cuerpos[1]['uuid'], cuerpos[0]['uuid']);
+    final venta = await vender(montoRecibido: const Dinero.pesos(200));
+    expect(venta.total, const Dinero.pesos(110));
+    expect(venta.cambio, const Dinero.pesos(90));
+    expect(venta.lineas.last.nombreCompleto, 'Horchata grande');
     expect(cuerpos[1], {
       'uuid': cuerpos[0]['uuid'],
-      'vendedor_id': 1,
+      'metodo_pago': 'efectivo',
       'lineas': [
-        {'producto_id': 2, 'cantidad': 2},
+        {'producto_id': 6, 'cantidad': 1},
+        // `presentacion_id` solo va si el producto tiene tamaños.
+        {'producto_id': 10, 'presentacion_id': 2, 'cantidad': 3},
       ],
-      'pago_con': '100.00',
+      'monto_recibido': '200.00',
+      'nota': 'Sin hielo',
     });
 
-    // Un pedido nuevo lleva otro uuid, y el pago exacto no manda `pago_con`.
-    await vender(2, const Dinero.pesos(90));
+    // Un pedido distinto lleva otro uuid, y el pago exacto no manda
+    // `monto_recibido`.
+    await vender();
     expect(cuerpos[2]['uuid'], isNot(cuerpos[0]['uuid']));
-    expect(cuerpos[2].containsKey('pago_con'), isFalse);
+    expect(cuerpos[2].containsKey('monto_recibido'), isFalse);
     expect(
       cuerpos[2]['uuid'],
       matches(
@@ -345,5 +545,82 @@ void main() {
         ),
       ),
     );
+  });
+
+  test(
+    'la caja: null si está cerrada, y solo lo básico para quien vende',
+    () async {
+      Object respuesta = {'caja': null};
+      final conexiones = conectar((peticion) async => json(respuesta));
+
+      expect(await conexiones.caja.obtenerCajaAbierta(), isNull);
+
+      // Quien solo vende no recibe los montos.
+      respuesta = {
+        'caja': {
+          'id': 1,
+          'fecha': '2026-11-10',
+          'abierta_en': '2026-11-11T00:02:35.574411Z',
+          'abierta': true,
+        },
+      };
+      final caja = await conexiones.caja.obtenerCajaAbierta();
+      expect(caja!.fecha, DateTime(2026, 11, 10));
+      expect(caja.efectivoEsperado, Dinero.cero);
+      expect(caja.esDeUnDiaAnteriorA(DateTime(2026, 11, 11, 9)), isTrue);
+      expect(caja.esDeUnDiaAnteriorA(DateTime(2026, 11, 10, 23)), isFalse);
+    },
+  );
+
+  test('el resumen pide solo las secciones que se le indican', () async {
+    late Uri direccion;
+    final conexiones = conectar((peticion) async {
+      direccion = peticion.url;
+      return json({
+        'periodo': 'semana',
+        'desde': '2026-11-09',
+        'hasta': '2026-11-15',
+        'totales': {
+          'vendido': '365.00',
+          'ventas': 4,
+          'efectivo': '275.00',
+          'tarjeta': '90.00',
+          'gastos': '850.00',
+          'utilidad': '-485.00',
+        },
+        'gastos_por_categoria': [
+          {
+            'categoria_id': null,
+            'nombre': null,
+            'color': null,
+            'total': '430.00',
+          },
+        ],
+      });
+    });
+
+    final resumen = await conexiones.resumen.obtenerResumen(
+      periodo: Periodo.semana,
+      fecha: DateTime(2026, 11, 10),
+      secciones: {
+        SeccionDeResumen.totales,
+        SeccionDeResumen.gastosPorCategoria,
+      },
+      orden: OrdenDeProductos.monto,
+    );
+
+    expect(direccion.path, '/api/v2/resumen');
+    expect(direccion.queryParameters, {
+      'periodo': 'semana',
+      'fecha': '2026-11-10',
+      'secciones': 'totales,gastos_por_categoria',
+      'orden': 'monto',
+      'top': '5',
+    });
+    expect(resumen.totales.utilidad, const Dinero.pesos(-485));
+    // Lo que no se pidió llega vacío; los gastos sin categoría, sin nombre.
+    expect(resumen.porDia, isEmpty);
+    expect(resumen.masVendidos, isEmpty);
+    expect(resumen.gastosPorCategoria.single.nombre, isNull);
   });
 }

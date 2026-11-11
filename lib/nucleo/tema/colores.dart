@@ -40,6 +40,12 @@ abstract final class Colores {
     fondo: Color(0xFFFFEDB8),
     tinta: Color(0xFF6E4E00),
   );
+
+  /// Gris: lo que no tiene categoría (un producto, un gasto).
+  static const sinCategoria = ParDeColores(
+    fondo: superficieHundida,
+    tinta: tintaSuave,
+  );
 }
 
 /// Colores pastel para distinguir categorías y personas.

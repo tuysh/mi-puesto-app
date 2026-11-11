@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:mi_puesto/app/dependencias.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
@@ -6,29 +6,24 @@ import 'package:mi_puesto/nucleo/tema/medidas.dart';
 import 'package:mi_puesto/pantallas/productos/widgets/encabezado_de_tabla.dart';
 import 'package:mi_puesto/pantallas/productos/widgets/fila_de_producto.dart';
 
-/// La tabla con todos los productos, incluidos los ocultos.
+/// La tabla con todos los productos activos (tablet).
 class TablaDeProductos extends StatelessWidget {
   const TablaDeProductos({
     super.key,
     required this.productos,
     required this.alElegir,
-    required this.alCambiarVisibilidad,
+    required this.alCambiarSiHayHoy,
     this.idElegido,
-    this.esCompacta = false,
   });
 
   final List<Producto> productos;
   final ValueChanged<Producto> alElegir;
 
-  /// Recibe el producto y `true` (ponerlo a la venta) o `false` (ocultarlo).
-  final void Function(Producto producto, bool aLaVenta) alCambiarVisibilidad;
+  /// Recibe el producto y `true` si se acaba de encender su "Hay hoy".
+  final void Function(Producto producto, bool hayHoy) alCambiarSiHayHoy;
 
   /// `id` del producto cuya fila se resalta; `null` para no resaltar nada.
   final String? idElegido;
-
-  /// La tabla compacta (teléfono) solo muestra Producto, Precio y
-  /// A la venta.
-  final bool esCompacta;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +39,7 @@ class TablaDeProductos extends StatelessWidget {
       ),
       child: Column(
         children: [
-          EncabezadoDeTabla(esCompacta: esCompacta),
+          const EncabezadoDeTabla(),
           Expanded(
             child: ListView.builder(
               itemCount: productos.length,
@@ -55,10 +50,9 @@ class TablaDeProductos extends StatelessWidget {
                   producto: producto,
                   categoria: catalogo.categoriaDe(producto),
                   estaElegida: producto.id == idElegido,
-                  esCompacta: esCompacta,
                   alTocar: () => alElegir(producto),
-                  alCambiarVisibilidad: (aLaVenta) {
-                    alCambiarVisibilidad(producto, aLaVenta);
+                  alCambiarSiHayHoy: (hayHoy) {
+                    alCambiarSiHayHoy(producto, hayHoy);
                   },
                 );
               },

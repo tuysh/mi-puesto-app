@@ -1,91 +1,125 @@
-import 'package:mi_puesto/datos/modelos/categoria.dart';
+import 'package:mi_puesto/datos/modelos/catalogo.dart';
 import 'package:mi_puesto/datos/modelos/foto_nueva.dart';
+import 'package:mi_puesto/datos/modelos/presentacion.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
 import 'package:mi_puesto/datos/repositorios/repositorios.dart';
-import 'package:mi_puesto/datos/simulados/datos_de_ejemplo.dart';
-import 'package:mi_puesto/datos/simulados/espera_simulada.dart';
+import 'package:mi_puesto/datos/simulados/servidor_simulado.dart';
 
+/// Los productos, en memoria.
 class RepositorioDeCatalogoSimulado implements RepositorioDeCatalogo {
-  final List<Categoria> _categorias = [...categoriasDeEjemplo];
-  final List<Producto> _productos = [...productosDeEjemplo];
+  RepositorioDeCatalogoSimulado(this._servidor);
 
-  /// Número que se usará para el `id` de la siguiente categoría nueva.
-  int _siguienteNumeroDeCategoria = categoriasDeEjemplo.length + 1;
-
-  /// Número que se usará para el `id` del siguiente producto nuevo.
-  int _siguienteNumero = productosDeEjemplo.length + 1;
+  final ServidorSimulado _servidor;
 
   @override
-  Future<List<Categoria>> obtenerCategorias() async {
-    await esperaSimulada();
-    return List.unmodifiable(_categorias);
-  }
+  Future<Catalogo> obtenerCatalogo() async {
+    await _servidor.atenderAAlguien();
 
-  @override
-  Future<Categoria> guardarCategoria(Categoria categoria) async {
-    await esperaSimulada();
-
-    if (categoria.esNueva) {
-      final creada = categoria.copiarCon(
-        id: 'categoria-$_siguienteNumeroDeCategoria',
-      );
-      _siguienteNumeroDeCategoria++;
-      _categorias.add(creada);
-      return creada;
-    }
-
-    final posicion = _categorias.indexWhere((c) => c.id == categoria.id);
-    _categorias[posicion] = categoria;
-    return categoria;
-  }
-
-  @override
-  Future<void> eliminarCategoria(String categoriaId) async {
-    await esperaSimulada();
-    _categorias.removeWhere((categoria) => categoria.id == categoriaId);
-  }
-
-  @override
-  Future<List<Producto>> obtenerProductos() async {
-    await esperaSimulada();
-    return List.unmodifiable(_productos);
+    return Catalogo(
+      categorias: List.unmodifiable(_servidor.categorias),
+      productos: List.unmodifiable(_servidor.productos),
+    );
   }
 
   @override
   Future<Producto> guardarProducto(Producto producto) async {
-    await esperaSimulada();
+    await _servidor.atenderALaDuena();
 
-    if (producto.esNuevo) {
-      final creado = producto.copiarCon(id: 'producto-$_siguienteNumero');
-      _siguienteNumero++;
-      _productos.add(creado);
-      return creado;
-    }
+    final guardado = Producto(
+      id: producto.esNuevo ? _servidor.idNuevo() : producto.id,
+      nombre: producto.nombre,
+      categoriaId: producto.categoriaId,
+      precio: producto.tieneTamanos ? null : producto.precio,
+      presentaciones: [
+        for (final presentacion in producto.presentaciones)
+          Presentacion(
+            // Los tamaños nuevos reciben su `id` aquí, como en el servidor.
+            id: presentacion.esNueva ? _servidor.idNuevo() : presentacion.id,
+            nombre: presentacion.nombre,
+            precio: presentacion.precio,
+          ),
+      ],
+      representacion: producto.representacion,
+      emoji: producto.emoji,
+      letras: producto.letras.isEmpty
+          ? _dosPrimerasLetras(producto.nombre)
+          : producto.letras,
+      imagenUrl: producto.imagenUrl,
+      disponible: producto.disponible,
+    );
 
-    final posicion = _productos.indexWhere((p) => p.id == producto.id);
-    _productos[posicion] = producto;
-    return producto;
+    _poner(guardado);
+    return guardado;
   }
 
   @override
-  Future<Producto> subirFotoDeProducto(String productoId, FotoNueva foto) {
+  Future<Producto> cambiarDisponibilidad(
+    String productoId,
+    bool disponible,
+  ) async {
+    await _servidor.atenderALaDuena();
+    return _poner(_buscar(productoId).copiarCon(disponible: disponible));
+  }
+
+  @override
+  Future<void> desactivarProducto(String productoId) async {
+    await _servidor.atenderALaDuena();
+    _servidor.productos.removeWhere((producto) => producto.id == productoId);
+  }
+
+  @override
+  Future<Producto> subirFotoDeProducto(
+    String productoId,
+    FotoNueva foto,
+  ) async {
+    await _servidor.atenderALaDuena();
+
     // Aquí no hay servidor que guarde la foto: la imagen completa viaja
     // dentro de la propia dirección (una dirección `data:`).
     final direccion = Uri.dataFromBytes(foto.bytes, mimeType: 'image/jpeg');
-    return _cambiarFoto(productoId, direccion.toString());
+    return _poner(
+      _buscar(productoId).copiarCon(
+        representacion: Representacion.imagen,
+        imagenUrl: direccion.toString(),
+      ),
+    );
   }
 
   @override
-  Future<Producto> quitarFotoDeProducto(String productoId) {
-    return _cambiarFoto(productoId, '');
+  Future<Producto> quitarFotoDeProducto(String productoId) async {
+    await _servidor.atenderALaDuena();
+
+    final producto = _buscar(productoId);
+    return _poner(
+      producto.copiarCon(
+        // Vuelve al emoji si tiene; si no, a las letras.
+        representacion: producto.emoji.isEmpty
+            ? Representacion.letras
+            : Representacion.emoji,
+        imagenUrl: '',
+      ),
+    );
   }
 
-  Future<Producto> _cambiarFoto(String productoId, String fotoUrl) async {
-    await esperaSimulada();
+  Producto _buscar(String productoId) {
+    return _servidor.productos.firstWhere((p) => p.id == productoId);
+  }
 
-    final posicion = _productos.indexWhere((p) => p.id == productoId);
-    return _productos[posicion] = _productos[posicion].copiarCon(
-      fotoUrl: fotoUrl,
-    );
+  /// Agrega [producto] a la lista o reemplaza al que tenía su mismo `id`.
+  Producto _poner(Producto producto) {
+    final posicion = _servidor.productos.indexWhere((p) => p.id == producto.id);
+    final yaExistia = posicion != -1;
+    if (yaExistia) {
+      _servidor.productos[posicion] = producto;
+    } else {
+      _servidor.productos.add(producto);
+    }
+    return producto;
+  }
+
+  /// Lo que el servidor pone de letras cuando no se mandan: "Pozole" → "Po".
+  String _dosPrimerasLetras(String nombre) {
+    final limpio = nombre.trim();
+    return limpio.length <= 2 ? limpio : limpio.substring(0, 2);
   }
 }

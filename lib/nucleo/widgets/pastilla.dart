@@ -10,17 +10,28 @@ class Pastilla extends StatelessWidget {
     required this.texto,
     required this.colores,
     this.alto = 32,
+    this.tamanoDeTexto = 14,
+    this.rellenoLateral = 12,
   });
+
+  /// Una pastilla chica, para marcar un renglón de una lista: "Editada",
+  /// "Cancelada", "Cuadró".
+  const Pastilla.chica({super.key, required this.texto, required this.colores})
+    : alto = 22,
+      tamanoDeTexto = 13,
+      rellenoLateral = 8;
 
   final String texto;
   final ParDeColores colores;
   final double alto;
+  final double tamanoDeTexto;
+  final double rellenoLateral;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: alto,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: EdgeInsets.symmetric(horizontal: rellenoLateral),
       decoration: BoxDecoration(
         color: colores.fondo,
         borderRadius: BorderRadius.circular(Radios.pildora),
@@ -33,7 +44,11 @@ class Pastilla extends StatelessWidget {
           texto,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Tipografia.texto(14, peso: 800, color: colores.tinta),
+          style: Tipografia.texto(
+            tamanoDeTexto,
+            peso: 800,
+            color: colores.tinta,
+          ),
         ),
       ),
     );

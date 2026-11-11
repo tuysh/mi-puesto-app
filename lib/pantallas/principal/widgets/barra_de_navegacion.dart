@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/pantallas/principal/destino.dart';
 import 'package:mi_puesto/pantallas/principal/widgets/boton_de_destino.dart';
@@ -7,9 +7,13 @@ import 'package:mi_puesto/pantallas/principal/widgets/boton_de_destino.dart';
 class BarraDeNavegacion extends StatelessWidget {
   const BarraDeNavegacion({
     super.key,
+    required this.destinos,
     required this.destinoActual,
     required this.alElegir,
   });
+
+  /// Las secciones que puede ver quien está dentro.
+  final List<Destino> destinos;
 
   final Destino destinoActual;
   final ValueChanged<Destino> alElegir;
@@ -29,25 +33,18 @@ class BarraDeNavegacion extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              for (final destino in destinosDeTelefono)
+              for (final destino in destinos)
                 BotonDeDestino(
                   destino: destino,
-                  estaElegido: _estaElegido(destino),
+                  estaElegido: destino == destinoActual,
                   alTocar: () => alElegir(destino),
+                  // Con solo dos botones, cada uno puede ser más ancho.
+                  ancho: destinos.length > 2 ? 72 : 96,
                 ),
             ],
           ),
         ),
       ),
     );
-  }
-
-  bool _estaElegido(Destino destino) {
-    // Las secciones que no tienen botón propio (Historial, Productos)
-    // se abren desde "Más", así que encienden ese botón.
-    final actualTieneBoton = destinosDeTelefono.contains(destinoActual);
-    if (!actualTieneBoton) return destino == Destino.mas;
-
-    return destino == destinoActual;
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:mi_puesto/controladores/controlador_de_caja.dart';
 import 'package:mi_puesto/controladores/controlador_de_catalogo.dart';
 import 'package:mi_puesto/controladores/controlador_de_pedido.dart';
 import 'package:mi_puesto/controladores/controlador_de_ventas.dart';
@@ -21,6 +22,7 @@ class Dependencias extends InheritedWidget {
     required this.conexiones,
     required this.sesion,
     required this.catalogo,
+    required this.caja,
     required this.pedido,
     required this.ventas,
     required this.pedirFoto,
@@ -30,6 +32,7 @@ class Dependencias extends InheritedWidget {
   final Conexiones conexiones;
   final Sesion sesion;
   final ControladorDeCatalogo catalogo;
+  final ControladorDeCaja caja;
   final ControladorDePedido pedido;
   final ControladorDeVentas ventas;
 

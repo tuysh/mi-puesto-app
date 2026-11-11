@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:mi_puesto/app/dependencias.dart';
-import 'package:mi_puesto/nucleo/avisos.dart';
 import 'package:mi_puesto/nucleo/navegacion.dart';
-import 'package:mi_puesto/nucleo/tema/colores.dart';
-import 'package:mi_puesto/nucleo/tema/tipografia.dart';
 import 'package:mi_puesto/nucleo/widgets/boton_de_contorno.dart';
 import 'package:mi_puesto/nucleo/widgets/boton_principal.dart';
-import 'package:mi_puesto/nucleo/widgets/logo_del_puesto.dart';
+import 'package:mi_puesto/pantallas/acceso/pantalla_de_tu_nombre.dart';
+import 'package:mi_puesto/pantallas/acceso/widgets/encabezado_de_paso.dart';
 import 'package:mi_puesto/pantallas/acceso/widgets/puntos_de_pin.dart';
 import 'package:mi_puesto/pantallas/acceso/widgets/teclado_de_pin.dart';
-import 'package:mi_puesto/pantallas/vendedores/pantalla_quien_vende.dart';
 
-/// Pantalla 0C: la cuenta nueva elige el PIN del puesto. Se escribe dos
+/// Pantalla 1.3: la dueña de una cuenta nueva elige su PIN. Se escribe dos
 /// veces (paso 1 y paso 2) para estar seguros de que no hubo un dedazo.
+///
+/// Aquí todavía no se guarda nada: el PIN se manda al servidor junto con
+/// el nombre, en el paso 3 ([PantallaDeTuNombre]).
 class PantallaDeCrearPin extends StatefulWidget {
   const PantallaDeCrearPin({super.key});
 
@@ -28,8 +27,6 @@ class _EstadoDePantallaDeCrearPin extends State<PantallaDeCrearPin> {
 
   /// Lo que se lleva escrito en el paso actual.
   String _pin = '';
-
-  bool _guardando = false;
 
   bool get _esElSegundoPaso => _primerPin.isNotEmpty;
   bool get _pinCompleto => _pin.length == _largoDelPin;
@@ -63,33 +60,15 @@ class _EstadoDePantallaDeCrearPin extends State<PantallaDeCrearPin> {
     });
   }
 
-  Future<void> _guardar() async {
-    final sesion = Dependencias.de(context).sesion;
-
-    setState(() => _guardando = true);
-    try {
-      await sesion.guardarPin(_pin);
-      if (!mounted) return;
-
-      // Quien acaba de crear el PIN no tiene que volver a escribirlo.
-      reemplazarPantalla(context, const PantallaQuienVende());
-    } catch (error) {
-      if (mounted) {
-        mostrarAvisoDeError(
-          context,
-          error,
-          siNoHayExplicacion: 'No se pudo guardar el PIN',
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _guardando = false);
-    }
+  void _guardar() {
+    abrirPantalla(context, PantallaDeTuNombre(pin: _pin));
   }
 
   String get _ayuda {
     if (_noCoincide) return 'No es igual al primero. Empieza de nuevo.';
     if (_esElSegundoPaso) return 'Escríbelo otra vez para confirmarlo.';
-    return 'Elige 4 números. Quien venda contigo lo usa para abrir la app.';
+    return 'Elige 4 números solo tuyos. No se puede recuperar aquí: si lo '
+        'olvidas, escríbele al desarrollador.';
   }
 
   /// El botón de abajo cambia según el paso; `null` si todavía no toca.
@@ -99,7 +78,7 @@ class _EstadoDePantallaDeCrearPin extends State<PantallaDeCrearPin> {
         texto: 'Guardar PIN',
         alto: 52,
         tamanoDeTexto: 19,
-        alTocar: _guardando ? null : _guardar,
+        alTocar: _guardar,
       );
     }
     if (_noCoincide) {
@@ -129,45 +108,12 @@ class _EstadoDePantallaDeCrearPin extends State<PantallaDeCrearPin> {
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
             child: Column(
               children: [
-                const LogoDelPuesto(
-                  tamano: 60,
+                EncabezadoDePaso(
                   icono: Icons.lock_outline_rounded,
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  _esElSegundoPaso ? 'Paso 2 de 2' : 'Paso 1 de 2',
-                  style: Tipografia.texto(
-                    14,
-                    peso: 800,
-                    color: Colores.tintaSuave,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _esElSegundoPaso ? 'Repite el PIN' : 'Crea el PIN del puesto',
-                  textAlign: TextAlign.center,
-                  style: Tipografia.titulo(30),
-                ),
-                const SizedBox(height: 8),
-                // Alto fijo para dos renglones: así el teclado no brinca
-                // cuando el texto cambia de largo.
-                ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 46),
-                  child: Semantics(
-                    liveRegion: true,
-                    child: Text(
-                      _ayuda,
-                      textAlign: TextAlign.center,
-                      style: Tipografia.texto(
-                        16,
-                        peso: _noCoincide ? 800 : 600,
-                        color: _noCoincide
-                            ? Pasteles.rosa.tinta
-                            : Colores.tintaSuave,
-                        altura: 1.4,
-                      ),
-                    ),
-                  ),
+                  paso: _esElSegundoPaso ? 2 : 1,
+                  titulo: _esElSegundoPaso ? 'Repite el PIN' : 'Crea tu PIN',
+                  ayuda: _ayuda,
+                  ayudaEsUnError: _noCoincide,
                 ),
                 const SizedBox(height: 22),
                 PuntosDePin(llenos: _pin.length, total: _largoDelPin),

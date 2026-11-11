@@ -1,45 +1,41 @@
 import 'package:mi_puesto/datos/error_del_servidor.dart';
-import 'package:mi_puesto/datos/http/almacen_de_sesion.dart';
 import 'package:mi_puesto/datos/http/cliente_de_api.dart';
 import 'package:mi_puesto/datos/http/conversion_de_json.dart';
-import 'package:mi_puesto/datos/modelos/estado_de_acceso.dart';
-import 'package:mi_puesto/datos/modelos/puesto.dart';
+import 'package:mi_puesto/datos/modelos/cuenta.dart';
+import 'package:mi_puesto/datos/modelos/negocio.dart';
+import 'package:mi_puesto/datos/modelos/perfil.dart';
 import 'package:mi_puesto/datos/repositorios/repositorios.dart';
 
-/// La cuenta, el puesto y el PIN, contra el servidor.
+/// La cuenta y quién usa el dispositivo, contra el servidor.
 ///
-/// Al entrar, el servidor entrega un "token" (la llave de la sesión) y el
-/// puesto de la cuenta; los dos se guardan en el dispositivo para no pedir
-/// el correo y la contraseña cada vez.
+/// Al entrar, el servidor entrega un "token" (la llave de la sesión); se
+/// guarda en el dispositivo para no pedir el correo y la contraseña cada
+/// vez. Quién está dentro (el perfil activo) lo recuerda el servidor.
 class RepositorioDeSesionHttp implements RepositorioDeSesion {
   RepositorioDeSesionHttp(this._api);
 
   final ClienteDeApi _api;
 
-  /// El puesto de la cuenta, como llegó en la última respuesta.
-  Puesto? _puesto;
-
   @override
-  Future<EstadoDeAcceso> consultarAcceso() async {
-    final sesion = await _api.leerSesion();
-    if (sesion == null) return EstadoDeAcceso.sinSesion;
+  Future<Cuenta?> consultarCuenta() async {
+    if (await _api.leerToken() == null) return null;
 
     try {
       // De paso comprueba que el token guardado siga vivo.
-      final cuenta = await _api.pedir(
+      final respuesta = await _api.pedir(
         'GET',
         '/cuenta',
         avisarSiSePierdeLaSesion: false,
       );
-      return _recordarPuesto(cuenta, puestoId: sesion.puestoId);
+      return cuentaDeJson(respuesta);
     } on ErrorDelServidor catch (error) {
-      if (error.codigo == 401) return EstadoDeAcceso.sinSesion;
+      if (error.codigoHttp == 401) return null;
       rethrow;
     }
   }
 
   @override
-  Future<bool> iniciarSesion({
+  Future<Cuenta?> iniciarSesion({
     required String correo,
     required String contrasena,
   }) async {
@@ -50,27 +46,76 @@ class RepositorioDeSesionHttp implements RepositorioDeSesion {
         cuerpo: {'email': correo, 'password': contrasena},
         conSesion: false,
       );
-      await _guardarSesion(respuesta);
-      return true;
+      await _api.guardarToken(respuesta['token'] as String);
+      return cuentaDeJson(respuesta);
     } on ErrorDelServidor catch (error) {
-      // 401: el correo o la contraseña no son correctos.
-      if (error.codigo == 401) return false;
+      if (error.codigo == CodigosDeError.credenciales) return null;
       rethrow;
     }
   }
 
   @override
-  Future<void> crearCuenta({
+  Future<Cuenta> crearCuenta({
+    required String nombreDelNegocio,
     required String correo,
     required String contrasena,
   }) async {
     final respuesta = await _api.pedir(
       'POST',
       '/cuenta/registro',
-      cuerpo: {'email': correo, 'password': contrasena},
+      cuerpo: {
+        'nombre': nombreDelNegocio,
+        'email': correo,
+        'password': contrasena,
+      },
       conSesion: false,
     );
-    await _guardarSesion(respuesta);
+    await _api.guardarToken(respuesta['token'] as String);
+    return cuentaDeJson(respuesta);
+  }
+
+  @override
+  Future<Cuenta> crearDuena({
+    required String nombre,
+    required String pin,
+  }) async {
+    // El PIN viaja como texto: como número, "0412" perdería el cero.
+    final respuesta = await _api.pedir(
+      'POST',
+      '/perfiles/dueno',
+      cuerpo: {'nombre': nombre, 'pin': pin},
+    );
+    return cuentaDeJson(respuesta);
+  }
+
+  @override
+  Future<Cuenta?> entrarComoPerfil({
+    required String perfilId,
+    required String pin,
+  }) async {
+    try {
+      final respuesta = await _api.pedir(
+        'POST',
+        '/perfiles/$perfilId/entrar',
+        cuerpo: {'pin': pin},
+      );
+      return cuentaDeJson(respuesta);
+    } on ErrorDelServidor catch (error) {
+      if (error.codigo == CodigosDeError.pinIncorrecto) return null;
+      // 429: tras 5 fallos seguidos el servidor bloquea a esa persona.
+      if (error.codigoHttp == 429) {
+        throw const ErrorDelServidor(
+          'Demasiados intentos. Espera 5 minutos para volver a probar.',
+          codigoHttp: 429,
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> salirDelPerfil() async {
+    await _api.pedir('POST', '/perfiles/salir');
   }
 
   @override
@@ -85,88 +130,47 @@ class RepositorioDeSesionHttp implements RepositorioDeSesion {
       // Aunque el servidor no se entere (por ejemplo, sin internet), este
       // dispositivo olvida la sesión: es lo que la persona pidió.
     }
-    await _api.olvidarSesion();
-    _puesto = null;
-  }
-
-  @override
-  Future<Puesto> obtenerPuesto() async {
-    final recordado = _puesto;
-    if (recordado != null) return recordado;
-
-    final respuesta = await _api.pedir('GET', await _api.rutaDelPuesto());
-    return _puesto = _puestoDeJson(respuesta);
-  }
-
-  @override
-  Future<void> guardarPin(String pin) async {
-    // El PIN viaja como texto: como número, "0123" perdería el cero.
-    await _api.pedir(
-      'PUT',
-      '${await _api.rutaDelPuesto()}/pin',
-      cuerpo: {'pin': pin},
-    );
-  }
-
-  @override
-  Future<bool> validarPin(String pin) async {
-    try {
-      await _api.pedir(
-        'POST',
-        '${await _api.rutaDelPuesto()}/pin/verificar',
-        cuerpo: {'pin': pin},
-      );
-      return true;
-    } on ErrorDelServidor catch (error) {
-      // 403: PIN incorrecto.
-      if (error.codigo == 403) return false;
-      // 429: tras 5 fallos seguidos el servidor bloquea el PIN 5 minutos.
-      if (error.codigo == 429) {
-        throw const ErrorDelServidor(
-          'Demasiados intentos. Espera 5 minutos para volver a probar.',
-          codigo: 429,
-        );
-      }
-      rethrow;
-    }
+    await _api.olvidarToken();
   }
 
   @override
   void avisarSiSePierdeLaSesion(void Function() aviso) {
-    _api.alPerderLaSesion = () {
-      _puesto = null;
-      aviso();
-    };
+    _api.alPerderLaSesion = aviso;
   }
 
-  /// Guarda en el dispositivo el token y el puesto que llegan al entrar.
-  Future<void> _guardarSesion(dynamic respuesta) async {
-    final puesto = (respuesta['puestos'] as List).first;
-    await _api.guardarSesion(
-      SesionGuardada(
-        token: respuesta['token'] as String,
-        puestoId: idDeJson(puesto['id']),
-      ),
-    );
-    _puesto = _puestoDeJson(puesto);
+  @override
+  void avisarSiNoHayNadieDentro(void Function() aviso) {
+    _api.alNoHaberNadieDentro = aviso;
   }
+}
 
-  /// Busca el puesto de la sesión en la respuesta de `/cuenta` y dice si
-  /// ya tiene PIN.
-  EstadoDeAcceso _recordarPuesto(dynamic cuenta, {required String puestoId}) {
-    final puestos = cuenta['puestos'] as List;
-    final puesto = puestos.firstWhere(
-      (puesto) => idDeJson(puesto['id']) == puestoId,
-      orElse: () => puestos.first,
-    );
-    _puesto = _puestoDeJson(puesto);
+/// Arma una [Cuenta] con lo que responden el login, `/cuenta` y las rutas
+/// para entrar con PIN: todas tienen la misma forma.
+Cuenta cuentaDeJson(dynamic json) {
+  final negocio = json['negocio'];
+  final perfilActivo = json['perfil'];
 
-    return puesto['tiene_pin'] == true
-        ? EstadoDeAcceso.listo
-        : EstadoDeAcceso.faltaElPin;
-  }
+  return Cuenta(
+    negocio: Negocio(
+      id: idDeJson(negocio['id']),
+      nombre: negocio['nombre'] as String,
+      correo: negocio['email'] as String? ?? '',
+    ),
+    perfiles: [
+      for (final perfil in json['perfiles'] as List) perfilDeJson(perfil),
+    ],
+    perfilActivo: perfilActivo == null ? null : perfilDeJson(perfilActivo),
+  );
+}
 
-  Puesto _puestoDeJson(dynamic json) {
-    return Puesto(id: idDeJson(json['id']), nombre: json['nombre'] as String);
-  }
+/// Arma un [Perfil]. También lo usa el repositorio de perfiles.
+Perfil perfilDeJson(dynamic json) {
+  return Perfil(
+    id: idDeJson(json['id']),
+    nombre: json['nombre'] as String,
+    rol: json['rol'] == 'dueno' ? Rol.dueno : Rol.vendedor,
+    color: json['color'] as int? ?? 0,
+    // Las listas de "¿Quién vende hoy?" solo traen activos y no lo dicen.
+    activo: json['activo'] as bool? ?? true,
+  );
 }

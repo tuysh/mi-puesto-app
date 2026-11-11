@@ -1,47 +1,25 @@
 import 'package:mi_puesto/nucleo/tema/colores.dart';
 
-/// Un grupo de productos: Postres, Antojos, Bebidas…
+/// Un grupo de productos (Postres, Bebidas…) o de gastos (Gas, Plaza…).
+/// Las dos clases de categoría tienen la misma forma.
 class Categoria {
   const Categoria({
     required this.id,
     required this.nombre,
-    required this.emoji,
-    required this.colores,
+    required this.color,
+    this.usos = 0,
   });
 
-  /// Una categoría en blanco, que todavía no se ha guardado.
-  const Categoria.nueva()
-    : id = '',
-      nombre = '',
-      emoji = '🍽️',
-      colores = Pasteles.rosa;
-
-  /// Vacío mientras la categoría no se haya guardado (ver [esNueva]).
   final String id;
-
   final String nombre;
-  final String emoji;
 
-  /// Colores con los que se pintan sus productos.
-  final ParDeColores colores;
+  /// Número del pastel que le toca, de 0 a 4 (ver `Pasteles.todos`).
+  /// Lo reparte el servidor al crearla.
+  final int color;
 
-  bool get esNueva => id.isEmpty;
+  /// Cuántos productos (o gastos) tiene esta categoría.
+  final int usos;
 
-  /// Emoji y nombre juntos: "🍰 Postres".
-  String get etiqueta => '$emoji $nombre';
-
-  /// Devuelve una copia con los campos indicados cambiados.
-  Categoria copiarCon({
-    String? id,
-    String? nombre,
-    String? emoji,
-    ParDeColores? colores,
-  }) {
-    return Categoria(
-      id: id ?? this.id,
-      nombre: nombre ?? this.nombre,
-      emoji: emoji ?? this.emoji,
-      colores: colores ?? this.colores,
-    );
-  }
+  /// Colores con los que se pintan sus productos y su etiqueta.
+  ParDeColores get colores => Pasteles.paraIndice(color);
 }

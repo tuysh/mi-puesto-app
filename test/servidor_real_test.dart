@@ -1,39 +1,37 @@
-import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:mi_puesto/datos/conexiones.dart';
 import 'package:mi_puesto/datos/error_del_servidor.dart';
 import 'package:mi_puesto/datos/http/almacen_de_sesion_en_memoria.dart';
-import 'package:mi_puesto/datos/modelos/caja.dart';
-import 'package:mi_puesto/datos/modelos/categoria.dart';
 import 'package:mi_puesto/datos/modelos/dinero.dart';
-import 'package:mi_puesto/datos/modelos/estado_de_acceso.dart';
-import 'package:mi_puesto/datos/modelos/foto_nueva.dart';
-import 'package:mi_puesto/datos/modelos/linea_de_pedido.dart';
+import 'package:mi_puesto/datos/modelos/gasto.dart';
+import 'package:mi_puesto/datos/modelos/presentacion.dart';
 import 'package:mi_puesto/datos/modelos/producto.dart';
-import 'package:mi_puesto/datos/modelos/reporte.dart';
-import 'package:mi_puesto/nucleo/tema/colores.dart';
+import 'package:mi_puesto/datos/modelos/resumen.dart';
+import 'package:mi_puesto/datos/modelos/venta.dart';
+import 'package:mi_puesto/nucleo/fechas.dart';
 
-/// Prueba los repositorios `…Http` contra un servidor de verdad.
+/// Prueba los repositorios `…Http` contra un servidor de verdad (API v2).
 ///
 /// Normalmente se salta. Para correrla, levanta el backend en tu
 /// computadora con los datos de `python manage.py sembrar_demo` recién
-/// sembrados (en una base de datos que se pueda ensuciar: la prueba cierra
-/// la caja y crea cuentas, así que no se puede repetir sobre la misma) y
-/// ejecuta:
+/// sembrados (en una base de datos que se pueda ensuciar: la prueba vende,
+/// crea cosas y registra una cuenta, así que deja rastro) y ejecuta:
 ///
 /// ```
 /// SERVIDOR_DE_PRUEBA=http://127.0.0.1:8000 flutter test test/servidor_real_test.dart
 /// ```
+///
+/// La cuenta sembrada es `mari@ejemplo.com` / `pay-de-limon`; el PIN de
+/// Mari (dueña) es 1234 y el de Lupe (vende) es 1111.
 void main() {
   final url = Platform.environment['SERVIDOR_DE_PRUEBA'];
   final razonParaSaltar = url == null
       ? 'Falta la variable SERVIDOR_DE_PRUEBA'
       : null;
 
+  /// Conexiones nuevas, como un dispositivo que nunca ha iniciado sesión.
   Conexiones conectar() {
     return Conexiones.http(
       urlDelServidor: url!,
@@ -41,252 +39,231 @@ void main() {
     );
   }
 
-  test('la cuenta de ejemplo: entrar, vender, reportes y caja', () async {
+  /// Inicia sesión con la cuenta sembrada y entra como la persona llamada
+  /// [nombre].
+  Future<Conexiones> entrarComo(String nombre, String pin) async {
     final conexiones = conectar();
-    final sesion = conexiones.sesion;
-
-    // Cuenta y PIN.
-    expect(await sesion.consultarAcceso(), EstadoDeAcceso.sinSesion);
-    expect(
-      await sesion.iniciarSesion(
-        correo: 'mari@ejemplo.com',
-        contrasena: 'no-es-esta',
-      ),
-      isFalse,
+    final cuenta = await conexiones.sesion.iniciarSesion(
+      correo: 'mari@ejemplo.com',
+      contrasena: 'pay-de-limon',
     );
-    expect(
-      await sesion.iniciarSesion(
-        correo: 'Mari@Ejemplo.com',
-        contrasena: 'pay-de-limon',
-      ),
-      isTrue,
-    );
-    expect(await sesion.consultarAcceso(), EstadoDeAcceso.listo);
-    expect((await sesion.obtenerPuesto()).nombre, 'Puesto Doña Mari');
-    expect(await sesion.validarPin('0000'), isFalse);
-    expect(await sesion.validarPin('1234'), isTrue);
+    final perfil = cuenta!.perfiles.firstWhere((p) => p.nombre == nombre);
+    await conexiones.sesion.entrarComoPerfil(perfilId: perfil.id, pin: pin);
+    return conexiones;
+  }
 
-    // ¿Quién vende?
-    final vendedores = await conexiones.vendedores.obtenerVendedores();
-    expect(vendedores.map((v) => v.nombre), containsAll(['Mari', 'Lupe']));
-    final mari = vendedores.firstWhere((v) => v.nombre == 'Mari');
-
-    // Catálogo.
-    final categorias = await conexiones.catalogo.obtenerCategorias();
-    final productos = await conexiones.catalogo.obtenerProductos();
-    expect(categorias.first.nombre, 'Postres');
-    expect(identical(categorias.first.colores, Pasteles.rosa), isTrue);
-    final pay = productos.firstWhere((p) => p.nombre == 'Pay de limón');
-    final esquite = productos.firstWhere((p) => p.nombre == 'Elote en vaso');
-    expect(pay.nombreCorto, 'Pay limón');
-    expect(pay.precio, const Dinero.pesos(45));
-    expect(pay.costo, const Dinero.pesos(18));
-
-    // Vender: dos pays y un esquite, paga con $200.
-    final lineas = [
-      LineaDePedido(producto: pay, cantidad: 2),
-      LineaDePedido(producto: esquite, cantidad: 1),
-    ];
-    final venta = await conexiones.ventas.registrarVenta(
-      lineas: lineas,
-      pagoCon: const Dinero.pesos(200),
-      vendedor: mari,
-    );
-    expect(venta.total, const Dinero.pesos(125));
-    expect(venta.cambio, const Dinero.pesos(75));
-
-    // Pago exacto.
-    final exacta = await conexiones.ventas.registrarVenta(
-      lineas: lineas,
-      pagoCon: const Dinero.pesos(125),
-      vendedor: mari,
-    );
-    expect(exacta.cambio, Dinero.cero);
-
-    // Hoy, antes y después de anular la venta exacta.
-    final antes = await conexiones.reportes.obtenerResumenDeHoy();
-    await conexiones.ventas.anularVenta(exacta.id);
-    final despues = await conexiones.reportes.obtenerResumenDeHoy();
-    expect(antes.vendido - despues.vendido, const Dinero.pesos(125));
-    expect(despues.numeroDeVentas, antes.numeroDeVentas - 1);
-    expect(despues.masVendidos, isNotEmpty);
-    expect(despues.ventasPorVendedor.first.nombre, isNotEmpty);
-
-    // Reportes: cada periodo suma lo mismo en la gráfica que en el total.
-    for (final periodo in Periodo.values) {
-      final reporte = await conexiones.reportes.obtenerReporte(periodo);
-      expect(
-        sumarDinero(reporte.tramos.map((tramo) => tramo.vendido)),
-        reporte.vendido,
-        reason: 'gráfica de ${periodo.name}',
-      );
-      expect(reporte.tramos.where((t) => t.esActual), hasLength(1));
-      expect(reporte.ventasPorCategoria, isNotEmpty);
-    }
-    final semana = await conexiones.reportes.obtenerReporte(Periodo.semana);
-    expect(semana.tramos.map((t) => t.etiqueta).join(), 'LMMJVSD');
-
-    // Caja: cerrar la que está abierta y abrir otra.
-    final cuenta = await conexiones.caja.obtenerCuentaDeCaja();
-    expect(cuenta!.fondoInicial, const Dinero.pesos(500));
-    expect(cuenta.vendidoEnEfectivo >= const Dinero.pesos(125), isTrue);
-    await conexiones.caja.cerrarCaja(
-      CierreDeCaja(contado: cuenta.debeHaber, nota: 'prueba'),
-    );
-    expect(await conexiones.caja.obtenerCuentaDeCaja(), isNull);
-    final nueva = await conexiones.caja.abrirCaja(const Dinero.centavos(30050));
-    expect(nueva.fondoInicial, const Dinero.centavos(30050));
-    expect(nueva.vendidoEnEfectivo, Dinero.cero);
-
-    await sesion.cerrarSesion();
-    expect(await sesion.consultarAcceso(), EstadoDeAcceso.sinSesion);
-  }, skip: razonParaSaltar);
-
-  test('una cuenta nueva: PIN, personas, categorías y productos', () async {
+  test('la cuenta sembrada entra y dice quiénes venden', () async {
     final conexiones = conectar();
-    final sesion = conexiones.sesion;
-    final correo =
-        'prueba-${DateTime.now().microsecondsSinceEpoch}@ejemplo.com';
 
-    // Una contraseña débil trae la explicación del servidor.
-    await expectLater(
-      sesion.crearCuenta(correo: correo, contrasena: '12345678'),
-      throwsA(
-        isA<ErrorDelServidor>().having((e) => e.mensaje, 'mensaje', isNotEmpty),
-      ),
+    expect(await conexiones.sesion.consultarCuenta(), isNull);
+    final sinEntrar = await conexiones.sesion.iniciarSesion(
+      correo: 'mari@ejemplo.com',
+      contrasena: 'otra-contraseña',
     );
+    expect(sinEntrar, isNull);
 
-    await sesion.crearCuenta(correo: correo, contrasena: 'tostilocos-con-todo');
-    expect(await sesion.consultarAcceso(), EstadoDeAcceso.faltaElPin);
-    expect((await sesion.obtenerPuesto()).nombre, 'Mi puesto');
-    await sesion.guardarPin('0123');
-    expect(await sesion.consultarAcceso(), EstadoDeAcceso.listo);
-    expect(await sesion.validarPin('0123'), isTrue);
+    final cuenta = await conexiones.sesion.iniciarSesion(
+      correo: 'mari@ejemplo.com',
+      contrasena: 'pay-de-limon',
+    );
+    expect(cuenta!.tieneDueno, isTrue);
+    expect(cuenta.perfilActivo, isNull);
+    expect(cuenta.perfiles.map((perfil) => perfil.nombre), contains('Lupe'));
 
-    // El mismo correo no se puede registrar dos veces.
+    // Sin escribir el PIN, casi todo responde `sin_perfil`.
     await expectLater(
-      conectar().sesion.crearCuenta(
-        correo: correo,
-        contrasena: 'tostilocos-con-todo',
-      ),
+      conexiones.catalogo.obtenerCatalogo(),
       throwsA(
         isA<ErrorDelServidor>().having(
-          (e) => e.mensaje,
-          'mensaje',
-          'Ya hay una cuenta con ese correo.',
+          (e) => e.codigo,
+          'codigo',
+          CodigosDeError.sinPerfil,
         ),
       ),
     );
 
-    // Personas.
-    expect(await conexiones.vendedores.obtenerVendedores(), isEmpty);
-    final chuy = await conexiones.vendedores.agregarVendedor('Chuy');
-    expect(
-      (await conexiones.vendedores.obtenerVendedores()).single.id,
-      chuy.id,
+    final mari = cuenta.perfiles.firstWhere((perfil) => perfil.esDueno);
+    final conPinMalo = await conexiones.sesion.entrarComoPerfil(
+      perfilId: mari.id,
+      pin: '0000',
     );
+    expect(conPinMalo, isNull);
+    final dentro = await conexiones.sesion.entrarComoPerfil(
+      perfilId: mari.id,
+      pin: '1234',
+    );
+    expect(dentro!.perfilActivo!.id, mari.id);
 
-    // Categorías: crear, editar y que la segunda quede después.
-    final catalogo = conexiones.catalogo;
-    expect(await catalogo.obtenerCategorias(), isEmpty);
-    final frutas = await catalogo.guardarCategoria(
-      const Categoria.nueva().copiarCon(
-        nombre: 'Frutas',
-        emoji: '🍓',
-        colores: Pasteles.verde,
-      ),
-    );
-    expect(frutas.esNueva, isFalse);
-    await catalogo.guardarCategoria(
-      const Categoria.nueva().copiarCon(nombre: 'Aguas', emoji: '🥤'),
-    );
-    final cambiada = await catalogo.guardarCategoria(
-      frutas.copiarCon(nombre: 'Fruta picada', colores: Pasteles.lila),
-    );
-    expect(cambiada.id, frutas.id);
-    final categorias = await catalogo.obtenerCategorias();
-    expect(categorias.map((c) => c.nombre), ['Fruta picada', 'Aguas']);
-    expect(identical(categorias.first.colores, Pasteles.lila), isTrue);
+    await conexiones.sesion.cerrarSesion();
+    expect(await conexiones.sesion.consultarCuenta(), isNull);
+  }, skip: razonParaSaltar);
 
-    // Productos: crear, ocultar y vender.
-    final nombreLargo = 'Mango con chile, limón y chamoy del bueno';
-    final mango = await catalogo.guardarProducto(
-      Producto.nuevo(categoriaId: frutas.id).copiarCon(
-        nombre: nombreLargo,
-        nombreCorto: nombreLargo,
-        emoji: '🥭',
-        precio: const Dinero.centavos(4050),
-        costo: const Dinero.pesos(15),
-      ),
-    );
-    expect(mango.esNuevo, isFalse);
-    expect(mango.nombreCorto, nombreLargo);
-    expect(mango.precio, const Dinero.centavos(4050));
-    final oculto = await catalogo.guardarProducto(
-      mango.copiarCon(nombreCorto: 'Mango', aLaVenta: false),
-    );
-    expect(oculto.aLaVenta, isFalse);
-    expect((await catalogo.obtenerProductos()).single.nombreCorto, 'Mango');
+  test('una cuenta nueva crea a su dueña y empieza vacía', () async {
+    final conexiones = conectar();
+    // Un correo distinto en cada corrida, para poder repetir la prueba.
+    final correo =
+        'prueba-${DateTime.now().millisecondsSinceEpoch}@ejemplo.com';
 
-    // Imagen: letras en vez de emoji, y una foto que se sube y se quita.
-    final conLetras = await catalogo.guardarProducto(
-      oculto.copiarCon(emoji: '', letras: 'Ma'),
+    final cuenta = await conexiones.sesion.crearCuenta(
+      nombreDelNegocio: 'Puesto de prueba',
+      correo: correo,
+      contrasena: 'una-clave-larga-y-rara',
     );
-    expect(conLetras.emoji, isEmpty);
-    expect(conLetras.letras, 'Ma');
-    final conFoto = await catalogo.subirFotoDeProducto(
-      mango.id,
-      FotoNueva(bytes: fotoDePrueba, nombreDeArchivo: 'mango.png'),
-    );
-    expect(conFoto.fotoUrl, startsWith('http'));
-    expect(conFoto.letras, 'Ma');
-    final foto = await http.get(Uri.parse(conFoto.fotoUrl));
-    expect(foto.statusCode, 200);
-    expect(foto.headers['content-type'], contains('image'));
-    expect((await catalogo.obtenerProductos()).single.fotoUrl, conFoto.fotoUrl);
-    final sinFoto = await catalogo.quitarFotoDeProducto(mango.id);
-    expect(sinFoto.fotoUrl, isEmpty);
+    expect(cuenta.tieneDueno, isFalse);
 
-    // Un archivo que no es imagen trae la explicación del servidor.
-    await expectLater(
-      catalogo.subirFotoDeProducto(
-        mango.id,
-        FotoNueva(
-          bytes: Uint8List.fromList(utf8.encode('no soy una foto')),
-          nombreDeArchivo: 'nota.jpg',
+    final conDuena = await conexiones.sesion.crearDuena(
+      nombre: 'Prueba',
+      pin: '0412',
+    );
+    expect(conDuena.perfilActivo!.esDueno, isTrue);
+    expect((await conexiones.catalogo.obtenerCatalogo()).productos, isEmpty);
+    expect(await conexiones.caja.obtenerCajaAbierta(), isNull);
+  }, skip: razonParaSaltar);
+
+  test(
+    'la dueña crea un producto con tamaños, lo cambia y lo desactiva',
+    () async {
+      final conexiones = await entrarComo('Mari', '1234');
+
+      final creado = await conexiones.catalogo.guardarProducto(
+        const Producto(
+          id: '',
+          nombre: 'Pozole de prueba',
+          categoriaId: null,
+          precio: null,
+          presentaciones: [
+            Presentacion(id: '', nombre: 'Chico', precio: Dinero.pesos(70)),
+            Presentacion(id: '', nombre: 'Grande', precio: Dinero.pesos(95)),
+          ],
         ),
-      ),
-      throwsA(isA<ErrorDelServidor>().having((e) => e.codigo, 'codigo', 400)),
-    );
+      );
+      expect(creado.esNuevo, isFalse);
+      expect(creado.precio, isNull);
+      expect(creado.presentaciones.length, 2);
+      expect(creado.presentaciones.first.esNueva, isFalse);
 
-    // Una categoría con productos no se puede eliminar.
-    await expectLater(
-      catalogo.eliminarCategoria(frutas.id),
-      throwsA(isA<ErrorDelServidor>().having((e) => e.codigo, 'codigo', 409)),
+      final sinHoy = await conexiones.catalogo.cambiarDisponibilidad(
+        creado.id,
+        false,
+      );
+      expect(sinHoy.disponible, isFalse);
+
+      await conexiones.catalogo.desactivarProducto(creado.id);
+      final catalogo = await conexiones.catalogo.obtenerCatalogo();
+      expect(catalogo.productos.any((p) => p.id == creado.id), isFalse);
+    },
+    skip: razonParaSaltar,
+  );
+
+  test('se vende, se edita y se cancela con la caja abierta', () async {
+    final conexiones = await entrarComo('Mari', '1234');
+    if (await conexiones.caja.obtenerCajaAbierta() == null) {
+      await conexiones.caja.abrirCaja(const Dinero.pesos(500));
+    }
+
+    final catalogo = await conexiones.catalogo.obtenerCatalogo();
+    final sencillo = catalogo.productos.firstWhere(
+      (producto) => !producto.tieneTamanos && producto.disponible,
+    );
+    final conTamanos = catalogo.productos.firstWhere(
+      (producto) => producto.tieneTamanos && producto.disponible,
     );
 
     final venta = await conexiones.ventas.registrarVenta(
-      lineas: [LineaDePedido(producto: oculto, cantidad: 3)],
-      pagoCon: const Dinero.pesos(200),
-      vendedor: chuy,
+      lineas: [
+        LineaPorCobrar(productoId: sencillo.id, cantidad: 1),
+        LineaPorCobrar(
+          productoId: conTamanos.id,
+          presentacionId: conTamanos.presentaciones.first.id,
+          cantidad: 2,
+        ),
+      ],
+      metodoDePago: MetodoDePago.efectivo,
+      montoRecibido: const Dinero.pesos(1000),
+      nota: 'Prueba',
     );
-    expect(venta.total, const Dinero.centavos(12150));
-    expect(venta.cambio, const Dinero.centavos(7850));
+    expect(
+      venta.total,
+      sencillo.precio! + conTamanos.presentaciones.first.precio * 2,
+    );
+    expect(venta.cambio, const Dinero.pesos(1000) - venta.total);
 
-    // Sin caja abierta no hay cuenta; la venta se pudo hacer igual.
-    expect(await conexiones.caja.obtenerCuentaDeCaja(), isNull);
+    final delDia = await conexiones.ventas.obtenerVentasDelDia(hoy());
+    expect(delDia.ventas.any((v) => v.id == venta.id), isTrue);
 
-    final hoy = await conexiones.reportes.obtenerResumenDeHoy();
-    expect(hoy.vendido, const Dinero.centavos(12150));
-    expect(hoy.masVendidos.single.piezas, 3);
-    expect(hoy.masVendidos.single.productoId, mango.id);
-    final dia = await conexiones.reportes.obtenerReporte(Periodo.dia);
-    expect(dia.tramos.single.vendido, const Dinero.centavos(12150));
-    expect(dia.ventasPorCategoria.single.categoria.nombre, 'Fruta picada');
+    final editada = await conexiones.ventas.editarVenta(
+      venta.id,
+      lineas: [LineaPorCobrar(productoId: sencillo.id, cantidad: 2)],
+      nota: 'Prueba editada',
+    );
+    expect(editada.total, sencillo.precio! * 2);
+    expect(editada.sePuedeCambiar, isTrue);
+    expect(editada.eventos.single.tipo, TipoDeEvento.edicion);
+
+    final cancelada = await conexiones.ventas.cancelarVenta(venta.id);
+    expect(cancelada.estaCancelada, isTrue);
+    expect(cancelada.sePuedeCambiar, isFalse);
+  }, skip: razonParaSaltar);
+
+  test('quien solo vende no puede lo que es de la dueña', () async {
+    final conexiones = await entrarComo('Lupe', '1111');
+
+    await expectLater(
+      conexiones.perfiles.obtenerPerfiles(),
+      throwsA(
+        isA<ErrorDelServidor>().having((e) => e.codigo, 'codigo', 'solo_dueno'),
+      ),
+    );
+    // Sí puede ver el catálogo y sus propias ventas.
+    expect((await conexiones.catalogo.obtenerCatalogo()).productos, isNotEmpty);
+    final ventas = await conexiones.ventas.obtenerVentasDelDia(hoy());
+    expect(ventas.cuantas, ventas.ventas.where((v) => !v.estaCancelada).length);
+  }, skip: razonParaSaltar);
+
+  test('gastos, categorías y resumen', () async {
+    final conexiones = await entrarComo('Mari', '1234');
+
+    final categoria = await conexiones.categoriasDeGastos.crearCategoria(
+      'Prueba ${DateTime.now().millisecondsSinceEpoch}',
+    );
+    final gasto = await conexiones.gastos.guardarGasto(
+      Gasto(
+        id: '',
+        concepto: 'Gasto de prueba',
+        monto: const Dinero.pesos(12),
+        fecha: hoy(),
+        categoriaId: categoria.id,
+        deCaja: false,
+      ),
+    );
+    expect(gasto.esNuevo, isFalse);
+    expect(gasto.editable, isTrue);
+
+    final deHoy = await conexiones.gastos.obtenerGastos(
+      desde: hoy(),
+      hasta: hoy(),
+      categoriaId: categoria.id,
+    );
+    expect(deHoy.gastos.single.concepto, 'Gasto de prueba');
+    expect(deHoy.total, const Dinero.pesos(12));
+
+    final resumen = await conexiones.resumen.obtenerResumen(
+      periodo: Periodo.semana,
+      fecha: hoy(),
+      secciones: SeccionDeResumen.values.toSet(),
+    );
+    expect(resumen.desde, lunesDe(hoy()));
+    expect(resumen.porDia.length, 7);
+    expect(
+      resumen.totales.utilidad,
+      resumen.totales.vendido - resumen.totales.gastos,
+    );
+    expect(
+      resumen.gastosPorCategoria.any((g) => g.nombre == categoria.nombre),
+      isTrue,
+    );
+
+    await conexiones.gastos.eliminarGasto(gasto.id);
+    await conexiones.categoriasDeGastos.eliminarCategoria(categoria.id);
   }, skip: razonParaSaltar);
 }
-
-/// Una imagen PNG diminuta (2 × 2 puntos rosas), válida de verdad.
-final fotoDePrueba = base64Decode(
-  'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEklEQVR4nGM4opV0RCuJAUIBACZWBUHn+eHKAAAAAElFTkSuQmCC',
-);

@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:mi_puesto/nucleo/tema/colores.dart';
 import 'package:mi_puesto/pantallas/productos/emojis_disponibles.dart';
 import 'package:mi_puesto/pantallas/productos/widgets/casilla_de_emoji.dart';
-import 'package:mi_puesto/pantallas/vender/widgets/boton_de_filtro.dart';
+import 'package:mi_puesto/nucleo/widgets/boton_de_filtro.dart';
 
 /// Los tipos de emoji (Postres, Antojos…) y, debajo, la cuadrícula del
 /// tipo elegido para escoger uno tocándolo.
